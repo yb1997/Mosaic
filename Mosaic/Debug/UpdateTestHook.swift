@@ -2,7 +2,7 @@
 import Foundation
 
 /// `-testInstallUpdate` installs an update a few seconds after launch, from the DMG
-/// in the WC_UPDATE_TEST_DMG environment variable (a file:// URL), or from the latest
+/// in the MOSAIC_UPDATE_TEST_DMG environment variable (a file:// URL), or from the latest
 /// release when it isn't set. Run it from a copy outside /Applications built with a
 /// lower MARKETING_VERSION; never publish a throwaway release to test this.
 enum UpdateTestHook {
@@ -10,7 +10,7 @@ enum UpdateTestHook {
         guard ProcessInfo.processInfo.arguments.contains("-testInstallUpdate") else { return }
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(3))
-            var dmg = ProcessInfo.processInfo.environment["WC_UPDATE_TEST_DMG"].flatMap(URL.init(string:))
+            var dmg = ProcessInfo.processInfo.environment["MOSAIC_UPDATE_TEST_DMG"].flatMap(URL.init(string:))
             if dmg == nil {
                 await UpdateService.shared.checkForUpdates()
                 dmg = UpdateService.shared.dmgURL

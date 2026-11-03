@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct WallpaperChangerApp: App {
+struct MosaicApp: App {
     @State private var store: WallpaperStore
     @State private var loginItem = LoginItem()
     private let engine: WallpaperEngine
@@ -22,13 +22,13 @@ struct WallpaperChangerApp: App {
     }
 
     var body: some Scene {
-        MenuBarExtra("Wallpaper Changer", systemImage: "photo.on.rectangle.angled") {
+        MenuBarExtra("Mosaic", systemImage: "photo.on.rectangle.angled") {
             MenuContent()
                 .environment(store)
         }
         .menuBarExtraStyle(.window)
 
-        Window("Wallpaper Changer Settings", id: "settings") {
+        Window("Mosaic Settings", id: "settings") {
             SettingsView()
                 .environment(loginItem)
         }

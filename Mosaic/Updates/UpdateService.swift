@@ -8,7 +8,7 @@ final class UpdateService {
     static let shared = UpdateService()
 
     private let repoOwner = "yb1997"
-    private let repoName = "WallpaperChanger"
+    private let repoName = "Mosaic"
     private let automaticInterval: TimeInterval = 24 * 60 * 60
 
     let currentVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"

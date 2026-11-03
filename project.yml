@@ -1,4 +1,4 @@
-name: WallpaperChanger
+name: Mosaic
 options:
   bundleIdPrefix: in.ybear
   deploymentTarget:
@@ -7,19 +7,19 @@ options:
 settings:
   base:
     SWIFT_VERSION: "6.0"
-    MARKETING_VERSION: "1.1.0"
-    CURRENT_PROJECT_VERSION: "2"
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
     ENABLE_HARDENED_RUNTIME: YES
 targets:
-  WallpaperChanger:
+  Mosaic:
     type: application
     platform: macOS
     sources:
-      - WallpaperChanger
+      - Mosaic
     info:
-      path: WallpaperChanger/Info.plist
+      path: Mosaic/Info.plist
       properties:
-        CFBundleDisplayName: Wallpaper Changer
+        CFBundleDisplayName: Mosaic
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSApplicationCategoryType: public.app-category.utilities
@@ -33,7 +33,7 @@ targets:
       Release: Config/Signing.xcconfig
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: in.ybear.WallpaperChanger
+        PRODUCT_BUNDLE_IDENTIFIER: in.ybear.Mosaic
         # AppIcon.icon is an Icon Composer document (Liquid Glass layers).
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         CODE_SIGN_STYLE: Manual

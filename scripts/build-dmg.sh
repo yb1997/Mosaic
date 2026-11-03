@@ -1,11 +1,11 @@
 #!/bin/bash
 # Builds a signed Release and packages it as a drag-to-Applications DMG.
 # Usage:  ./scripts/build-dmg.sh
-# Output: WallpaperChanger-<version>.dmg in the repository root.
+# Output: Mosaic-<version>.dmg in the repository root.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
-APP_NAME="WallpaperChanger"
+APP_NAME="Mosaic"
 BUILD_DIR="$(pwd)/build"
 VERSION=$(grep -E '^ *MARKETING_VERSION:' project.yml | sed -E 's/^[^:]*: *"?([0-9.]+)"?.*$/\1/')
 DMG_OUTPUT="$(pwd)/${APP_NAME}-${VERSION}.dmg"
@@ -46,7 +46,7 @@ mkdir -p "$STAGING_DIR"
 cp -R "$APP_PATH" "$STAGING_DIR/"
 ln -s /Applications "$STAGING_DIR/Applications"
 rm -f "$DMG_OUTPUT"
-hdiutil create -volname "Wallpaper Changer" -srcfolder "$STAGING_DIR" -ov -format UDZO "$DMG_OUTPUT" >/dev/null
+hdiutil create -volname "Mosaic" -srcfolder "$STAGING_DIR" -ov -format UDZO "$DMG_OUTPUT" >/dev/null
 
 echo "=== Done ==="
 ls -lh "$DMG_OUTPUT"

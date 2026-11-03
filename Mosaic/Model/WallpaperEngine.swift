@@ -79,7 +79,7 @@ final class WallpaperEngine {
             do {
                 try NSWorkspace.shared.setDesktopImageURL(target, for: screen, options: options)
             } catch {
-                NSLog("WallpaperChanger: could not set \(target.lastPathComponent) on \(display.name): \(error)")
+                NSLog("Mosaic: could not set \(target.lastPathComponent) on \(display.name): \(error)")
             }
         }
     }

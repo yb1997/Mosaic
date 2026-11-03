@@ -1,4 +1,4 @@
-// Code signing for the WallpaperChanger target.
+// Code signing for the Mosaic target.
 //
 // Default: ad-hoc signing, so the project builds on any Mac. Ad-hoc builds can't
 // install updates: the updater only accepts a new version signed with the same

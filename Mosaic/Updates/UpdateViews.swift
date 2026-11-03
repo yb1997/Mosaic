@@ -22,7 +22,7 @@ private struct UpdateStatus {
         case .downloading(let fraction): return "Downloading update… \(Int(fraction * 100))%"
         case .verifying: return "Checking the update…"
         case .installing: return "Installing…"
-        case .relaunching: return "Restarting Wallpaper Changer…"
+        case .relaunching: return "Restarting Mosaic…"
         case .failed(let message): return message
         case .idle: break
         }
@@ -32,7 +32,7 @@ private struct UpdateStatus {
             return "Version \(latest) is available"
         }
         if service.lastCheckFailed { return "Couldn’t reach GitHub. Try again later." }
-        if showUpToDate, service.lastCheckDate != nil { return "Wallpaper Changer is up to date." }
+        if showUpToDate, service.lastCheckDate != nil { return "Mosaic is up to date." }
         return nil
     }
 
@@ -69,7 +69,7 @@ struct UpdateBanner: View {
                     Button("Install") { status.install() }
                         .buttonStyle(.glassProminent)
                         .controlSize(.small)
-                        .help("Download and install the new version, then restart Wallpaper Changer")
+                        .help("Download and install the new version, then restart Mosaic")
                 } else {
                     Button("Download…") { status.service.openReleasePage() }
                         .buttonStyle(.glass)

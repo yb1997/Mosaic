@@ -50,7 +50,7 @@ final class WallpaperStore {
 
     init() {
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("WallpaperChanger", isDirectory: true)
+            .appendingPathComponent("Mosaic", isDirectory: true)
         imagesDirectory = support.appendingPathComponent("Images", isDirectory: true)
         stateURL = support.appendingPathComponent("state.json")
         try? FileManager.default.createDirectory(at: imagesDirectory, withIntermediateDirectories: true)
@@ -108,7 +108,7 @@ final class WallpaperStore {
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             try encoder.encode(screens).write(to: stateURL, options: .atomic)
         } catch {
-            NSLog("WallpaperChanger: could not save state: \(error)")
+            NSLog("Mosaic: could not save state: \(error)")
         }
     }
 

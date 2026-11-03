@@ -46,7 +46,7 @@ final class UpdateInstaller {
         // An app run from Downloads without moving it runs from a random read-only
         // location (App Translocation); a mounted DMG is read-only too.
         if path.contains("/AppTranslocation/") || path.hasPrefix("/Volumes/") {
-            return "Move Wallpaper Changer to the Applications folder to install updates."
+            return "Move Mosaic to the Applications folder to install updates."
         }
         if Self.runningAppRequirement() == nil {
             return "This copy isn’t signed in a way that allows automatic updates."
@@ -69,7 +69,7 @@ final class UpdateInstaller {
         let target = Bundle.main.bundleURL
         let currentVersion = UpdateService.shared.currentVersion
         let workDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("WallpaperChangerUpdate-\(UUID().uuidString)", isDirectory: true)
+            .appendingPathComponent("MosaicUpdate-\(UUID().uuidString)", isDirectory: true)
         var mountPoint: URL?
 
         do {
@@ -167,7 +167,7 @@ final class UpdateInstaller {
     private static func findApp(in mountPoint: URL) throws -> URL {
         let items = (try? FileManager.default.contentsOfDirectory(at: mountPoint, includingPropertiesForKeys: nil)) ?? []
         guard let app = items.first(where: { $0.pathExtension == "app" }) else {
-            throw UpdateError.message("The downloaded update doesn’t contain Wallpaper Changer.")
+            throw UpdateError.message("The downloaded update doesn’t contain Mosaic.")
         }
         return app
     }
@@ -204,7 +204,7 @@ final class UpdateInstaller {
               let staticCode,
               SecStaticCodeCheckValidity(staticCode, flags, requirement) == errSecSuccess
         else {
-            throw UpdateError.message("The downloaded update isn’t signed by Wallpaper Changer’s developer, so it wasn’t installed.")
+            throw UpdateError.message("The downloaded update isn’t signed by Mosaic’s developer, so it wasn’t installed.")
         }
 
         // Read the version from the downloaded app itself, not from the release tag.
@@ -224,7 +224,7 @@ final class UpdateInstaller {
     /// to one administrator-authorized step when the folder isn't writable.
     private nonisolated static func replace(_ target: URL, with newApp: URL) async throws {
         let folder = target.deletingLastPathComponent()
-        let staged = folder.appendingPathComponent(".WallpaperChanger-update-\(UUID().uuidString).app")
+        let staged = folder.appendingPathComponent(".Mosaic-update-\(UUID().uuidString).app")
 
         if FileManager.default.isWritableFile(atPath: folder.path) {
             do {
@@ -283,7 +283,7 @@ final class UpdateInstaller {
         do {
             try helper.run()
         } catch {
-            state = .failed("The update was installed. Quit and reopen Wallpaper Changer to finish.")
+            state = .failed("The update was installed. Quit and reopen Mosaic to finish.")
             return
         }
         NSApp.terminate(nil)

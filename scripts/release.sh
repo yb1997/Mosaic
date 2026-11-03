@@ -5,7 +5,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 VERSION="${1:?Usage: ./scripts/release.sh vX.Y.Z}"
-REPO="${RELEASE_REPO:-yb1997/WallpaperChanger}"
+REPO="${RELEASE_REPO:-yb1997/Mosaic}"
 
 # The tag must match the app's version, or the in-app update check misfires.
 APP_VERSION=$(grep -E '^ *MARKETING_VERSION:' project.yml | sed -E 's/^[^:]*: *"?([0-9.]+)"?.*$/\1/')
@@ -28,14 +28,14 @@ if ! grep -q '[^[:space:]]' "$NOTES"; then
 fi
 
 ./scripts/build-dmg.sh
-DMG="WallpaperChanger-${APP_VERSION}.dmg"
+DMG="Mosaic-${APP_VERSION}.dmg"
 
 echo "=== Publishing ${VERSION} on ${REPO} ==="
 git push origin main
 gh release create "$VERSION" "$DMG" \
   --repo "$REPO" \
   --target main \
-  --title "Wallpaper Changer ${APP_VERSION}" \
+  --title "Mosaic ${APP_VERSION}" \
   --notes-file "$NOTES"
 git fetch --tags --quiet origin
 
