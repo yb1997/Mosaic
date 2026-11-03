@@ -3,6 +3,11 @@
 A small macOS menu bar app that gives each connected screen its own
 wallpaper, with an optional separate lock screen image per screen.
 
+<p align="center">
+  <img src="docs/screenshots/menu.png" width="354" alt="Menu bar panel with a desktop and lock screen image for each of two screens">
+  <img src="docs/screenshots/settings.png" width="532" alt="Settings window with Open at Login and update options">
+</p>
+
 - Click a tile in the menu bar panel to pick an image; the × clears it.
 - A screen with no lock screen image shows its desktop image when locked.
   "Lock screen same as desktop" does the same while keeping the chosen lock
