@@ -5,6 +5,8 @@ screen image for each connected screen.
 
 - Click a tile in the menu bar panel to pick an image; the × clears it.
 - A screen with no lock screen image shows its desktop image when locked.
+  "Lock screen same as desktop" does the same while keeping the chosen lock
+  image for when it's turned off.
 - Settings… has Open at Login (`SMAppService`).
 - Runs on notifications only (lock/unlock, Space change, wake, screen
   changes), with no polling. Previews are downsampled with ImageIO.

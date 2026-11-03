@@ -19,6 +19,16 @@ struct MenuContent: View {
                                 .frame(width: 136, height: 85)
                         }
                     }
+                    Toggle(isOn: Binding(
+                        get: { store.wallpapers(for: display).lockSameAsDesktop },
+                        set: { store.setLockSameAsDesktop($0, display: display) }
+                    )) {
+                        Text("Lock screen same as desktop")
+                            .font(.caption)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .toggleStyle(.switch)
+                    .controlSize(.mini)
                 }
             }
 

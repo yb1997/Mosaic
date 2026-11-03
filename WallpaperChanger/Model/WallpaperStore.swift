@@ -11,6 +11,21 @@ enum Slot: String, Codable, CaseIterable {
 struct ScreenWallpapers: Codable, Equatable {
     var desktop: String?
     var lock: String?
+    /// Show the desktop image on the lock screen. The lock image is kept so
+    /// turning this off brings it back.
+    var lockSameAsDesktop = false
+
+    /// The lock image actually in use.
+    var effectiveLock: String? { lockSameAsDesktop ? nil : lock }
+
+    init() {}
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        desktop = try container.decodeIfPresent(String.self, forKey: .desktop)
+        lock = try container.decodeIfPresent(String.self, forKey: .lock)
+        lockSameAsDesktop = try container.decodeIfPresent(Bool.self, forKey: .lockSameAsDesktop) ?? false
+    }
 
     subscript(slot: Slot) -> String? {
         get { slot == .desktop ? desktop : lock }
@@ -72,6 +87,10 @@ final class WallpaperStore {
 
     func clear(_ slot: Slot, display: Display) {
         update(display) { $0[slot] = nil }
+    }
+
+    func setLockSameAsDesktop(_ same: Bool, display: Display) {
+        update(display) { $0.lockSameAsDesktop = same }
     }
 
     private func update(_ display: Display, _ change: (inout ScreenWallpapers) -> Void) {

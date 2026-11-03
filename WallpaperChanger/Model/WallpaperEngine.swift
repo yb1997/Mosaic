@@ -53,7 +53,7 @@ final class WallpaperEngine {
         if locked {
             let coversForeignWallpaper = store.displays.contains {
                 let wallpapers = store.wallpapers(for: $0)
-                return wallpapers.lock != nil && wallpapers.desktop == nil
+                return wallpapers.effectiveLock != nil && wallpapers.desktop == nil
             }
             if coversForeignWallpaper {
                 settingsBeforeLock = SystemWallpaperStore.snapshot()
@@ -74,7 +74,7 @@ final class WallpaperEngine {
             let wallpapers = store.wallpapers(for: display)
             let screen = display.screen
             let current = NSWorkspace.shared.desktopImageURL(for: screen)
-            let target = store.imageURL(isLocked ? (wallpapers.lock ?? wallpapers.desktop) : wallpapers.desktop)
+            let target = store.imageURL(isLocked ? (wallpapers.effectiveLock ?? wallpapers.desktop) : wallpapers.desktop)
             guard let target, target != current else { continue }
             do {
                 try NSWorkspace.shared.setDesktopImageURL(target, for: screen, options: options)

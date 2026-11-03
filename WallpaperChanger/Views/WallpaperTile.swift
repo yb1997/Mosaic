@@ -10,13 +10,24 @@ struct WallpaperTile: View {
     @State private var isHovering = false
 
     var body: some View {
-        let fileName = store.wallpapers(for: display)[slot]
+        let wallpapers = store.wallpapers(for: display)
+        // A lock tile that follows the desktop shows the desktop image and can't be edited.
+        let isLinked = slot == .lock && wallpapers.lockSameAsDesktop
+        let fileName = isLinked ? nil : wallpapers[slot]
+        let shown = isLinked ? wallpapers.desktop : fileName
         let shape = RoundedRectangle(cornerRadius: 10, style: .continuous)
 
         Button(action: choose) {
-            Thumbnail(url: store.imageURL(fileName), placeholder: slot == .lock ? "Same as desktop" : "Not set")
+            Thumbnail(url: store.imageURL(shown), placeholder: slot == .lock ? "Same as desktop" : "Not set")
+                .opacity(isLinked ? 0.6 : 1)
                 .overlay {
-                    if isHovering {
+                    if isLinked {
+                        Label("Same as desktop", systemImage: "link")
+                            .font(.caption2.weight(.semibold))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .glassEffect(.regular, in: .capsule)
+                    } else if isHovering {
                         ZStack {
                             shape.fill(.black.opacity(0.25))
                             Label("Choose…", systemImage: "photo.badge.plus")
@@ -38,6 +49,7 @@ struct WallpaperTile: View {
                 .contentShape(shape)
         }
         .buttonStyle(.plain)
+        .disabled(isLinked)
         .onHover { isHovering = $0 }
         .animation(.easeOut(duration: 0.15), value: isHovering)
         .overlay(alignment: .topTrailing) {
