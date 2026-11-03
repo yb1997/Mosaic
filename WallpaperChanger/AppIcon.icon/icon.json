@@ -1,0 +1,29 @@
+{
+  "fill" : {
+    "automatic-gradient" : "extended-srgb:0.20000,0.42000,0.95000,1.00000"
+  },
+  "groups" : [
+    {
+      "layers" : [
+        { "image-name" : "sun.svg", "name" : "sun" },
+        { "image-name" : "mountains.svg", "name" : "mountains" },
+        { "image-name" : "desktop.svg", "name" : "desktop" }
+      ],
+      "name" : "Desktop",
+      "shadow" : { "kind" : "neutral", "opacity" : 0.5 },
+      "translucency" : { "enabled" : true, "value" : 0.2 }
+    },
+    {
+      "layers" : [
+        { "image-name" : "padlock.svg", "name" : "padlock" },
+        { "image-name" : "lock-screen.svg", "name" : "lock screen" }
+      ],
+      "name" : "Lock Screen",
+      "shadow" : { "kind" : "neutral", "opacity" : 0.5 },
+      "translucency" : { "enabled" : true, "value" : 0.5 }
+    }
+  ],
+  "supported-platforms" : {
+    "squares" : [ "macOS" ]
+  }
+}
