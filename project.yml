@@ -1,0 +1,32 @@
+name: WallpaperChanger
+options:
+  bundleIdPrefix: in.ybear
+  deploymentTarget:
+    macOS: "26.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    ENABLE_HARDENED_RUNTIME: YES
+targets:
+  WallpaperChanger:
+    type: application
+    platform: macOS
+    sources:
+      - WallpaperChanger
+    info:
+      path: WallpaperChanger/Info.plist
+      properties:
+        CFBundleDisplayName: Wallpaper Changer
+        LSApplicationCategoryType: public.app-category.utilities
+        LSUIElement: true
+    # Not sandboxed: the app writes macOS's wallpaper settings file and
+    # restarts WallpaperAgent (docs/PRIVATE_APIS.md). No App Store build.
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: in.ybear.WallpaperChanger
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        GENERATE_INFOPLIST_FILE: NO
