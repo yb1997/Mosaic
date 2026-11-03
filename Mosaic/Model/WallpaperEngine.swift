@@ -21,6 +21,10 @@ final class WallpaperEngine {
 
     init(store: WallpaperStore) {
         self.store = store
+        #if DEBUG
+        // `-keepWallpapers YES` never touches the real wallpapers, e.g. for screenshots with sample images.
+        if UserDefaults.standard.bool(forKey: "keepWallpapers") { return }
+        #endif
         store.onChange = { [weak self] in self?.apply() }
 
         let distributed = DistributedNotificationCenter.default()

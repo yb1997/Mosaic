@@ -21,6 +21,8 @@ struct SettingsView: View {
                 Text("Lock screen images show while the Mac is locked and switch back when you unlock.")
             }
 
+            ProfileSettingsSection()
+
             UpdateSettingsSection()
         }
         .formStyle(.grouped)

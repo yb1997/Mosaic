@@ -18,6 +18,9 @@ struct MenuContent: View {
     var body: some View {
         let scrolls = store.displays.count > maxVisibleDisplays
         VStack(alignment: .leading, spacing: 14) {
+            ProfileBar()
+                .frame(width: contentWidth)
+
             if scrolls {
                 ScrollView {
                     displayList
@@ -52,13 +55,16 @@ struct MenuContent: View {
                         NSApp.activate()
                     } label: {
                         Label("Settings…", systemImage: "gearshape")
+                            .labelStyle(.iconOnly)
                     }
+                    .help("Settings")
                     Spacer()
                     Button("Quit") { NSApp.terminate(nil) }
                 }
                 .buttonStyle(.glass)
             }
             .frame(width: contentWidth)
+            .padding(.top, 6)
         }
         .padding(14)
         .fixedSize()

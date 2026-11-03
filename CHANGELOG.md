@@ -11,6 +11,13 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- Profiles: save every screen's desktop and lock screen images (and the
+  "Lock screen same as desktop" switches) under a name, and switch between
+  them from the menu at the top of the panel. "Update" saves edits back to the
+  profile you last used. Settings has a Profiles section to rename and delete
+  them. Profiles are kept in `profiles.json`; `state.json` is unchanged.
+
 ## [1.0.0] - 2026-11-03
 
 ### Added

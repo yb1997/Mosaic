@@ -31,6 +31,7 @@ struct MosaicApp: App {
         Window("Mosaic Settings", id: "settings") {
             SettingsView()
                 .environment(loginItem)
+                .environment(store)
         }
         .windowResizability(.contentSize)
         .defaultLaunchBehavior(.suppressed)
