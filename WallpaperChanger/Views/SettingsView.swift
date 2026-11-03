@@ -22,6 +22,8 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
+        // A grouped Form scrolls by default and reports a tiny height; size the window to the content instead.
+        .scrollDisabled(true)
         .frame(width: 420)
         .fixedSize(horizontal: false, vertical: true)
         .onAppear { loginItem.refresh() }

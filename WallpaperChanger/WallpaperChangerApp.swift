@@ -9,7 +9,14 @@ struct WallpaperChangerApp: App {
     init() {
         let store = WallpaperStore()
         _store = State(initialValue: store)
+        #if DEBUG
+        let snapshotting = UserDefaults.standard.string(forKey: "snapshotMenu") != nil
+        // Don't touch real wallpapers with fake displays.
+        engine = WallpaperEngine(store: snapshotting ? WallpaperStore() : store)
+        MenuSnapshot.runIfRequested(store: store)
+        #else
         engine = WallpaperEngine(store: store)
+        #endif
     }
 
     var body: some Scene {

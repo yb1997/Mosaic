@@ -8,6 +8,7 @@ struct WallpaperTile: View {
     let display: Display
     let slot: Slot
     @State private var isHovering = false
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         let wallpapers = store.wallpapers(for: display)
@@ -78,8 +79,9 @@ struct WallpaperTile: View {
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
         panel.message = "Choose the \(slot.title.lowercased()) image for \(display.name)"
+        // Close the menu panel first: it floats above other windows and would cover the open panel.
+        dismiss()
         NSApp.activate()
-        // The menu panel closes when the open panel takes focus, so don't rely on this view after it.
         let store = store, display = display, slot = slot
         panel.begin { response in
             guard response == .OK, let url = panel.url else { return }

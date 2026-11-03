@@ -25,4 +25,12 @@ xcodebuild -project WallpaperChanger.xcodeproj -scheme WallpaperChanger -derived
 open build/Build/Products/Debug/WallpaperChanger.app
 ```
 
+To check the menu panel layout without clicking the menu bar, run a Debug
+build with `-snapshotMenu out.png`, and add `-fakeDisplays N` to pretend there
+are N screens:
+
+```bash
+build/Build/Products/Debug/WallpaperChanger.app/Contents/MacOS/WallpaperChanger -snapshotMenu /tmp/menu.png -fakeDisplays 4
+```
+
 Images and settings live in `~/Library/Application Support/WallpaperChanger/`.
