@@ -11,6 +11,22 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-03
+
+### Added
+- In-app updates: Wallpaper Changer checks GitHub once a day (at launch and
+  after waking) and shows a banner in the menu panel when a new version is out.
+  Install downloads it, checks that it's signed by the same developer and is
+  newer, replaces the app and restarts it. Settings → Updates has Check Now and
+  a switch to turn automatic checks off.
+- DMG installer: drag Wallpaper Changer to Applications.
+
+### Changed
+- Releases are signed with a stable local certificate instead of ad-hoc, which
+  is what lets an installed copy accept the next version as an update.
+  Version 1.0.0 was ad-hoc signed, so it can't update itself: install 1.1.0 by
+  hand once.
+
 ## [1.0.0] - 2026-11-03
 
 ### Added
@@ -29,5 +45,6 @@ All notable changes to this project are documented here. The format follows
 - Wallpapers are re-applied after switching Spaces, waking, and screen changes.
   The app does nothing in between.
 
-[Unreleased]: https://github.com/yb1997/WallpaperChanger/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/yb1997/WallpaperChanger/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/yb1997/WallpaperChanger/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/yb1997/WallpaperChanger/releases/tag/v1.0.0

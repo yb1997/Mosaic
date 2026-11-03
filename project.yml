@@ -7,8 +7,8 @@ options:
 settings:
   base:
     SWIFT_VERSION: "6.0"
-    MARKETING_VERSION: "1.0.0"
-    CURRENT_PROJECT_VERSION: "1"
+    MARKETING_VERSION: "1.1.0"
+    CURRENT_PROJECT_VERSION: "2"
     ENABLE_HARDENED_RUNTIME: YES
 targets:
   WallpaperChanger:
@@ -26,11 +26,19 @@ targets:
         LSUIElement: true
     # Not sandboxed: the app writes macOS's wallpaper settings file and
     # restarts WallpaperAgent (docs/PRIVATE_APIS.md). No App Store build.
+    # Signing identity comes from Config/Signing.xcconfig (ad-hoc unless a
+    # local certificate is configured).
+    configFiles:
+      Debug: Config/Signing.xcconfig
+      Release: Config/Signing.xcconfig
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: in.ybear.WallpaperChanger
         # AppIcon.icon is an Icon Composer document (Liquid Glass layers).
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        CODE_SIGN_IDENTITY: "-"
         CODE_SIGN_STYLE: Manual
+        # With a self-signed certificate and the hardened runtime, library
+        # validation rejects Xcode's separate debug dylib ("different Team
+        # IDs") and Debug builds crash at launch. It only serves previews.
+        ENABLE_DEBUG_DYLIB: NO
         GENERATE_INFOPLIST_FILE: NO

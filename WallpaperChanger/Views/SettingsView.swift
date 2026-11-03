@@ -20,6 +20,8 @@ struct SettingsView: View {
             } footer: {
                 Text("Lock screen images show while the Mac is locked and switch back when you unlock.")
             }
+
+            UpdateSettingsSection()
         }
         .formStyle(.grouped)
         // A grouped Form scrolls by default and reports a tiny height; size the window to the content instead.

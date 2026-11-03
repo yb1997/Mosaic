@@ -31,6 +31,11 @@ struct MenuContent: View {
                     .frame(width: contentWidth)
             }
 
+            if UpdateService.shared.hasUpdate {
+                UpdateBanner()
+                    .frame(width: contentWidth)
+            }
+
             if let error = store.lastError {
                 Text(error)
                     .font(.caption)

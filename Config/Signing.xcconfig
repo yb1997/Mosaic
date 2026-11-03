@@ -1,0 +1,15 @@
+// Code signing for the WallpaperChanger target.
+//
+// Default: ad-hoc signing, so the project builds on any Mac. Ad-hoc builds can't
+// install updates: the updater only accepts a new version signed with the same
+// certificate as the running app, and an ad-hoc signature pins one exact build.
+//
+// Releases are signed with a local code-signing certificate. Name it in
+// Config/Signing.local.xcconfig (gitignored), e.g. by copying the example:
+//
+//     CODE_SIGN_IDENTITY = FreeDisplay Local
+
+CODE_SIGN_IDENTITY = -
+DEVELOPMENT_TEAM =
+
+#include? "Signing.local.xcconfig"

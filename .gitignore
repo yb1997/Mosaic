@@ -8,3 +8,6 @@ Spikes/lockspike
 Spikes/lockswap
 Spikes/*.png
 *.zip
+Config/Signing.local.xcconfig
+*.dmg
+build-test/
