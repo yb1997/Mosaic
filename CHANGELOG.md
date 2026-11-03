@@ -11,6 +11,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-03
+
 ### Added
 - Profiles: save every screen's desktop and lock screen images (and the
   "Lock screen same as desktop" switches) under a name, and switch between
@@ -44,5 +46,6 @@ All notable changes to this project are documented here. The format follows
 - Wallpapers are re-applied after switching Spaces, waking, and screen changes.
   The app does nothing in between.
 
-[Unreleased]: https://github.com/yb1997/Mosaic/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/yb1997/Mosaic/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/yb1997/Mosaic/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/yb1997/Mosaic/releases/tag/v1.0.0
