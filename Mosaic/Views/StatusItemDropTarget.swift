@@ -39,7 +39,7 @@ enum StatusItemDropTarget {
             if attempts > 0 {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { install(attempts: attempts - 1) }
             } else {
-                NSLog("Mosaic: menu bar icon not found; dragging onto it won't show the drop shelf")
+                Log.ui.error("Menu bar icon not found; dragging onto it won't show the drop shelf")
             }
             return
         }

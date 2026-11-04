@@ -107,3 +107,11 @@ For screenshots with sample images, run a Debug build with
 never changes the real wallpapers.
 
 Images and settings live in `~/Library/Application Support/Mosaic/`.
+
+## Logs
+Errors go to the unified log under subsystem `in.ybear.Mosaic`, with the
+categories `engine`, `lockSwap`, `imports`, `storage`, `updater` and `ui`:
+
+```bash
+log stream --predicate 'subsystem == "in.ybear.Mosaic"'
+```

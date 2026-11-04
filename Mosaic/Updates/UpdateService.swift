@@ -82,6 +82,7 @@ final class UpdateService {
                   let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let tag = json["tag_name"] as? String
             else {
+                Log.updater.error("Update check got an unexpected response (HTTP \((response as? HTTPURLResponse)?.statusCode ?? 0, privacy: .public))")
                 lastCheckFailed = true
                 return
             }
@@ -95,6 +96,7 @@ final class UpdateService {
                 .flatMap(URL.init(string:))
             hasUpdate = Self.isNewerVersion(version, than: currentVersion)
         } catch {
+            Log.updater.error("Update check failed: \(String(describing: error), privacy: .public)")
             lastCheckFailed = true
         }
     }

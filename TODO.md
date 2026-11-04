@@ -24,8 +24,6 @@ after the 1.2.0 release.
   decoding older `state.json` / `profiles.json`, `activeProfile` matching,
   which files image cleanup keeps (including pending undo and imports in
   progress). Add a GitHub Action running `xcodebuild test`.
-- [ ] **Logging.** Replace `NSLog` with `os.Logger` (subsystem
-  `in.ybear.Mosaic`, categories for engine, lock swap, updater, imports).
 
 ## Features
 

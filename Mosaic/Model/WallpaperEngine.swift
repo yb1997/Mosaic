@@ -108,7 +108,7 @@ final class WallpaperEngine {
             do {
                 try NSWorkspace.shared.setDesktopImageURL(target, for: screen, options: options)
             } catch {
-                NSLog("Mosaic: could not set \(target.lastPathComponent) on \(display.name): \(error)")
+                Log.engine.error("Could not set \(target.lastPathComponent, privacy: .public) on \(display.name, privacy: .public): \(String(describing: error), privacy: .public)")
             }
         }
     }

@@ -231,7 +231,7 @@ final class WallpaperStore {
             try fileManager.moveItem(at: temporary, to: destination)
             return name
         } catch {
-            NSLog("Mosaic: could not rename \(temporary.lastPathComponent) to \(name): \(error)")
+            Log.imports.error("Could not rename \(temporary.lastPathComponent, privacy: .public) to \(name, privacy: .public): \(String(describing: error), privacy: .public)")
             return temporary.lastPathComponent
         }
     }
@@ -254,6 +254,7 @@ final class WallpaperStore {
     }
 
     func importFailed(_ sourceName: String, _ error: Error) {
+        Log.imports.error("Could not use \(sourceName, privacy: .public): \(String(describing: error), privacy: .public)")
         lastError = "Couldn't use \(sourceName): \(error.localizedDescription)"
     }
 
@@ -351,7 +352,7 @@ final class WallpaperStore {
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             try encoder.encode(value).write(to: url, options: .atomic)
         } catch {
-            NSLog("Mosaic: could not save \(what): \(error)")
+            Log.storage.error("Could not save \(what, privacy: .public): \(String(describing: error), privacy: .public)")
         }
     }
 

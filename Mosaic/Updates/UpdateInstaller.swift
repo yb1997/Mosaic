@@ -89,6 +89,7 @@ final class UpdateInstaller {
         } catch {
             if let mount = mountPoint { await Task.detached { Self.detach(mount) }.value }
             try? FileManager.default.removeItem(at: workDir)
+            Log.updater.error("Update install failed: \(String(describing: error), privacy: .public)")
             if case UpdateError.message(let message) = error {
                 state = .failed(message)
             } else {
@@ -283,6 +284,7 @@ final class UpdateInstaller {
         do {
             try helper.run()
         } catch {
+            Log.updater.error("Could not start the relaunch helper: \(String(describing: error), privacy: .public)")
             state = .failed("The update was installed. Quit and reopen Mosaic to finish.")
             return
         }

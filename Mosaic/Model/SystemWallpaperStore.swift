@@ -18,7 +18,7 @@ enum SystemWallpaperStore {
         do {
             try data.write(to: url, options: .atomic)
         } catch {
-            NSLog("Mosaic: could not restore wallpaper settings: \(error)")
+            Log.lockSwap.error("Could not restore wallpaper settings: \(String(describing: error), privacy: .public)")
             return
         }
         let kill = Process()

@@ -18,6 +18,8 @@ All notable changes to this project are documented here. The format follows
 - The same image picked for several screens, or as both desktop and lock
   screen, is now stored once. Copied images are named by a hash of their
   contents. Images already stored keep their names.
+- Errors are logged with `os.Logger` (subsystem `in.ybear.Mosaic`) instead of
+  `NSLog`, including failed update checks and installs.
 
 ### Fixed
 - Clearing a desktop image now puts the macOS default wallpaper on that
