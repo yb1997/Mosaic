@@ -11,6 +11,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-11-04
+
 ### Added
 - Right-click menu on each tile: Choose Image…, Use on All Screens, Copy to
   another screen, Swap Desktop and Lock Screen, Show in Finder, and Clear.
@@ -101,7 +103,8 @@ All notable changes to this project are documented here. The format follows
 - Wallpapers are re-applied after switching Spaces, waking, and screen changes.
   The app does nothing in between.
 
-[Unreleased]: https://github.com/yb1997/Mosaic/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/yb1997/Mosaic/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/yb1997/Mosaic/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/yb1997/Mosaic/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/yb1997/Mosaic/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/yb1997/Mosaic/compare/v1.0.0...v1.1.0

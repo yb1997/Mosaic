@@ -1,14 +1,14 @@
 # To-do
 
 Open items for Mosaic, roughly in priority order. Last updated 2026-11-04,
-after the 1.3.0 release.
+after the 1.4.0 release.
 
 ## Not yet verified
 
 - [ ] **Screen-change debounce.** Plugging in or waking a monitor should
   re-apply wallpapers once, 300 ms after the notifications stop
   (`WallpaperEngine`). Not seen happen on a real monitor change yet.
-- [ ] **1.3.0 changes in the app.** Covered by unit tests but not yet tried by
+- [ ] **1.3.0 and 1.4.0 changes in the app.** Covered by unit tests but not yet tried by
   hand: × on a desktop tile shows the default wallpaper (on every Space), the
   error close button, and the duplicate-name note in both name fields.
 - [ ] **Tile context menu.** Store actions are unit-tested; the menu itself
