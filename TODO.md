@@ -18,10 +18,7 @@ after the 1.2.0 release.
 
 ## Improvements
 
-- [ ] **Tests and CI.** No test target yet. Start with `isNewerVersion`,
-  decoding older `state.json` / `profiles.json`, `activeProfile` matching,
-  which files image cleanup keeps (including pending undo and imports in
-  progress). Add a GitHub Action running `xcodebuild test`.
+_All done for now._
 
 ## Features
 

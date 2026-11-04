@@ -42,3 +42,28 @@ targets:
         # IDs") and Debug builds crash at launch. It only serves previews.
         ENABLE_DEBUG_DYLIB: NO
         GENERATE_INFOPLIST_FILE: NO
+      configs:
+        # The same library validation stops the unit tests' bundle loading
+        # into the app. Releases keep the hardened runtime.
+        Debug:
+          ENABLE_HARDENED_RUNTIME: NO
+    scheme:
+      testTargets:
+        - MosaicTests
+  MosaicTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - MosaicTests
+    dependencies:
+      - target: Mosaic
+    configFiles:
+      Debug: Config/Signing.xcconfig
+      Release: Config/Signing.xcconfig
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: in.ybear.MosaicTests
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGN_STYLE: Manual
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/Mosaic.app/Contents/MacOS/Mosaic
+        BUNDLE_LOADER: $(TEST_HOST)

@@ -1,0 +1,34 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    # Has Xcode 26.x, enough for the macOS 26 target and Swift 6.
+    runs-on: macos-26
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      # Mosaic.xcodeproj is generated from project.yml and not committed.
+      - name: Generate the project
+        run: xcodegen generate
+
+      # Signs ad-hoc: Config/Signing.local.xcconfig isn't in the repository.
+      - name: Run tests
+        run: |
+          xcodebuild test \
+            -project Mosaic.xcodeproj \
+            -scheme Mosaic \
+            -destination 'platform=macOS' \
+            -derivedDataPath build-test

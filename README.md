@@ -108,6 +108,20 @@ never changes the real wallpapers.
 
 Images and settings live in `~/Library/Application Support/Mosaic/`.
 
+## Tests
+Unit tests (Swift Testing) are in `MosaicTests/` and run inside the app. Under
+a test run the app uses a throwaway folder and starts nothing, so tests never
+change the real wallpapers, settings or images. Debug builds skip the hardened
+runtime so the test bundle can load; Release builds keep it.
+
+```bash
+xcodegen generate
+xcodebuild test -project Mosaic.xcodeproj -scheme Mosaic -destination 'platform=macOS' -derivedDataPath build-test
+```
+
+GitHub Actions runs them on every push to `main` and on pull requests
+(`.github/workflows/tests.yml`).
+
 ## Logs
 Errors go to the unified log under subsystem `in.ybear.Mosaic`, with the
 categories `engine`, `lockSwap`, `imports`, `storage`, `updater` and `ui`:

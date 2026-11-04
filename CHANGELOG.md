@@ -22,6 +22,8 @@ All notable changes to this project are documented here. The format follows
   to a name in use is refused, with a note under the name field.
 - Errors are logged with `os.Logger` (subsystem `in.ybear.Mosaic`) instead of
   `NSLog`, including failed update checks and installs.
+- Unit tests and a GitHub Actions workflow that runs them. Debug builds no
+  longer use the hardened runtime, so the tests can load into the app.
 
 ### Fixed
 - Clearing a desktop image now puts the macOS default wallpaper on that

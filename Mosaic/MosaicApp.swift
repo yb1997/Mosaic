@@ -4,9 +4,20 @@ import SwiftUI
 struct MosaicApp: App {
     @State private var store: WallpaperStore
     @State private var loginItem = LoginItem()
-    private let engine: WallpaperEngine
+    private let engine: WallpaperEngine?
+
+    /// Unit tests run inside the app. Then it uses a throwaway folder and
+    /// starts nothing, so tests never touch real wallpapers, settings or images.
+    static let isRunningTests = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
 
     init() {
+        if Self.isRunningTests {
+            let folder = FileManager.default.temporaryDirectory
+                .appendingPathComponent("MosaicTestHost-\(UUID().uuidString)", isDirectory: true)
+            _store = State(initialValue: WallpaperStore(directory: folder, defaults: UserDefaults(suiteName: "MosaicTestHost") ?? .standard))
+            engine = nil
+            return
+        }
         let store = WallpaperStore()
         _store = State(initialValue: store)
         #if DEBUG

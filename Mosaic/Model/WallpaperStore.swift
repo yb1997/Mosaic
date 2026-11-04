@@ -64,9 +64,9 @@ final class WallpaperStore {
     private(set) var screens: [String: ScreenWallpapers] = [:]
     private(set) var profiles: [Profile] = []
     private var lastProfileID: UUID? {
-        didSet { UserDefaults.standard.set(lastProfileID?.uuidString, forKey: "lastProfileID") }
+        didSet { defaults.set(lastProfileID?.uuidString, forKey: "lastProfileID") }
     }
-    private(set) var displays: [Display] = Display.connected
+    private(set) var displays: [Display]
     private(set) var lastError: String?
     /// The last clear or replace, until the next change.
     private(set) var undoable: UndoableChange?
@@ -91,13 +91,26 @@ final class WallpaperStore {
     /// so the engine can show the macOS default there instead.
     @ObservationIgnored var onDesktopCleared: (String) -> Void = { _ in }
 
+    @ObservationIgnored let directory: URL
     @ObservationIgnored let imagesDirectory: URL
     @ObservationIgnored private let stateURL: URL
     @ObservationIgnored private let profilesURL: URL
+    @ObservationIgnored private let defaults: UserDefaults
 
-    init() {
-        let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+    static var defaultDirectory: URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("Mosaic", isDirectory: true)
+    }
+
+    /// Tests pass their own folder, defaults and displays, so they never
+    /// touch the real ones.
+    init(directory: URL = WallpaperStore.defaultDirectory,
+         defaults: UserDefaults = .standard,
+         displays: [Display]? = nil) {
+        let support = directory
+        self.directory = directory
+        self.defaults = defaults
+        self.displays = displays ?? Display.connected
         imagesDirectory = support.appendingPathComponent("Images", isDirectory: true)
         stateURL = support.appendingPathComponent("state.json")
         profilesURL = support.appendingPathComponent("profiles.json")
@@ -117,7 +130,7 @@ final class WallpaperStore {
                 loadedEverything = false
             }
         }
-        lastProfileID = UserDefaults.standard.string(forKey: "lastProfileID").flatMap(UUID.init)
+        lastProfileID = defaults.string(forKey: "lastProfileID").flatMap(UUID.init)
         // Images kept for an undo that was still pending when the app quit. Only
         // when both files were read, or an unreadable one would lose its images.
         if loadedEverything { removeUnusedImages() }
