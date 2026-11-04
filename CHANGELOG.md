@@ -20,6 +20,9 @@ All notable changes to this project are documented here. The format follows
   contents. Images already stored keep their names.
 
 ### Fixed
+- Clearing a desktop image now puts the macOS default wallpaper on that
+  screen. Before, the cleared image stayed on screen even though its file
+  could be deleted.
 - A Lock Screen tile set to "Same as desktop" no longer shows the words twice
   when the desktop has no image.
 

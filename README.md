@@ -9,7 +9,8 @@ wallpaper, with an optional separate lock screen image per screen.
 </p>
 
 - Click a tile in the menu bar panel to pick an image; the × clears it, and
-  Undo (⌘Z) in the panel puts it back.
+  Undo (⌘Z) in the panel puts it back. Clearing a desktop image puts the
+  macOS default wallpaper (a still of it) on that screen.
 - Or drag an image onto the menu bar icon: a shelf with every screen's tiles
   opens under it, and you drop the image on a tile.
 - A screen with no lock screen image shows its desktop image when locked.

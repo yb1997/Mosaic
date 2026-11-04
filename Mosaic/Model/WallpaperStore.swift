@@ -87,6 +87,9 @@ final class WallpaperStore {
 
     /// Called after any change so the engine can re-apply wallpapers.
     @ObservationIgnored var onChange: () -> Void = {}
+    /// Called with a display's ID just before its desktop image is cleared,
+    /// so the engine can show the macOS default there instead.
+    @ObservationIgnored var onDesktopCleared: (String) -> Void = { _ in }
 
     @ObservationIgnored let imagesDirectory: URL
     @ObservationIgnored private let stateURL: URL
@@ -259,6 +262,7 @@ final class WallpaperStore {
     }
 
     func clear(_ slot: Slot, display: Display) {
+        if slot == .desktop { onDesktopCleared(display.id) }
         update(display, undo: "Cleared the \(slot.title.lowercased()) image on \(display.name)") { $0[slot] = nil }
     }
 

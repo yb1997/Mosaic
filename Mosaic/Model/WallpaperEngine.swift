@@ -14,6 +14,19 @@ final class WallpaperEngine {
     private var settingsBeforeLock: Data?
     private var observers: [(NotificationCenter, NSObjectProtocol)] = []
     private var screenChange: Task<Void, Never>?
+    /// Screens whose desktop image was cleared with ×. They show the macOS
+    /// default until they get an image again. Screens that are only empty
+    /// (say, left out of a profile) keep whatever wallpaper they have.
+    private var clearedDisplays: Set<String> = []
+
+    /// A still of the macOS default wallpaper (the default itself is an
+    /// aerial, which NSWorkspace can't set).
+    private static let defaultWallpaper: URL? = [
+        "/System/Library/CoreServices/DefaultDesktop.heic",
+        "/System/Library/CoreServices/DefaultBackground.jpg",
+    ]
+    .map { URL(fileURLWithPath: $0).resolvingSymlinksInPath() }
+    .first { FileManager.default.fileExists(atPath: $0.path) }
 
     private let options: [NSWorkspace.DesktopImageOptionKey: Any] = [
         .imageScaling: NSImageScaling.scaleProportionallyUpOrDown.rawValue,
@@ -27,6 +40,7 @@ final class WallpaperEngine {
         if UserDefaults.standard.bool(forKey: "keepWallpapers") { return }
         #endif
         store.onChange = { [weak self] in self?.apply() }
+        store.onDesktopCleared = { [weak self] in self?.clearedDisplays.insert($0) }
 
         let distributed = DistributedNotificationCenter.default()
         observe(distributed, "com.apple.screenIsLocked") { $0.setLocked(true) }
@@ -86,7 +100,10 @@ final class WallpaperEngine {
             let wallpapers = store.wallpapers(for: display)
             let screen = display.screen
             let current = NSWorkspace.shared.desktopImageURL(for: screen)
-            let target = store.imageURL(isLocked ? (wallpapers.effectiveLock ?? wallpapers.desktop) : wallpapers.desktop)
+            if wallpapers.desktop != nil { clearedDisplays.remove(display.id) }
+            let desktop = store.imageURL(wallpapers.desktop)
+                ?? (clearedDisplays.contains(display.id) ? Self.defaultWallpaper : nil)
+            let target = isLocked ? (store.imageURL(wallpapers.effectiveLock) ?? desktop) : desktop
             guard let target, target != current else { continue }
             do {
                 try NSWorkspace.shared.setDesktopImageURL(target, for: screen, options: options)
