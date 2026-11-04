@@ -11,6 +11,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-11-04
+
 ### Changed
 - An error in the panel (such as an image that couldn't be copied) now has a
   close button, and goes away when the panel closes instead of staying until
@@ -88,7 +90,8 @@ All notable changes to this project are documented here. The format follows
 - Wallpapers are re-applied after switching Spaces, waking, and screen changes.
   The app does nothing in between.
 
-[Unreleased]: https://github.com/yb1997/Mosaic/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/yb1997/Mosaic/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/yb1997/Mosaic/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/yb1997/Mosaic/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/yb1997/Mosaic/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/yb1997/Mosaic/releases/tag/v1.0.0

@@ -1,20 +1,16 @@
 # To-do
 
 Open items for Mosaic, roughly in priority order. Last updated 2026-11-04,
-after the 1.2.0 release.
-
-## Next release
-
-- [ ] **Release 1.2.1.** `main` has an unpushed fix (`3420607`: linked lock
-  tiles showed "Same as desktop" twice), listed under Unreleased in
-  CHANGELOG.md. Bump to 1.2.1 and run `./scripts/release.sh v1.2.1`, or wait
-  and ship it with the next feature release as 1.3.0.
+after the 1.3.0 release.
 
 ## Not yet verified
 
 - [ ] **Screen-change debounce.** Plugging in or waking a monitor should
   re-apply wallpapers once, 300 ms after the notifications stop
   (`WallpaperEngine`). Not seen happen on a real monitor change yet.
+- [ ] **1.3.0 changes in the app.** Covered by unit tests but not yet tried by
+  hand: × on a desktop tile shows the default wallpaper (on every Space), the
+  error close button, and the duplicate-name note in both name fields.
 
 ## Improvements
 
