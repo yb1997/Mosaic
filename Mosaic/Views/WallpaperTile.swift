@@ -21,7 +21,9 @@ struct WallpaperTile: View {
         let shape = RoundedRectangle(cornerRadius: 10, style: .continuous)
 
         Button(action: choose) {
-            Thumbnail(url: store.imageURL(shown), placeholder: slot == .lock ? "Same as desktop" : "Not set")
+            // A linked tile already says "Same as desktop" in its label, so its placeholder stays blank.
+            Thumbnail(url: store.imageURL(shown),
+                      placeholder: isLinked ? "" : slot == .lock ? "Same as desktop" : "Not set")
                 .opacity(isLinked ? 0.6 : 1)
                 .overlay {
                     if isImporting {

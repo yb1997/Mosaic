@@ -11,6 +11,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+- A Lock Screen tile set to "Same as desktop" no longer shows the words twice
+  when the desktop has no image.
+
 ## [1.2.0] - 2026-11-04
 
 ### Added

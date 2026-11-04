@@ -20,10 +20,16 @@ struct Thumbnail: View {
                 } else {
                     ZStack {
                         shape.fill(.quaternary)
-                        if url == nil || failed == url {
-                            Text(url == nil ? placeholder : "No preview")
+                        if failed != nil && failed == url {
+                            Text("No preview")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
+                        } else if url == nil {
+                            if !placeholder.isEmpty {
+                                Text(placeholder)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
                         } else {
                             ProgressView()
                                 .controlSize(.small)
