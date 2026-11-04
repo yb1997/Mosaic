@@ -15,6 +15,9 @@ All notable changes to this project are documented here. The format follows
 - An error in the panel (such as an image that couldn't be copied) now has a
   close button, and goes away when the panel closes instead of staying until
   a later pick succeeds.
+- The same image picked for several screens, or as both desktop and lock
+  screen, is now stored once. Copied images are named by a hash of their
+  contents. Images already stored keep their names.
 
 ### Fixed
 - A Lock Screen tile set to "Same as desktop" no longer shows the words twice

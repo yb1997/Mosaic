@@ -18,9 +18,6 @@ after the 1.2.0 release.
 
 ## Improvements
 
-- [ ] **Store each image once.** Name copied images by a content hash
-  (SHA-256) instead of a UUID, so the same photo on several screens, or as
-  desktop and lock, is stored once. Matters while the disk is nearly full.
 - [ ] **Unique profile names.** Two profiles can share a name; block or flag
   duplicates when saving or renaming.
 - [ ] **Tests and CI.** No test target yet. Start with `isNewerVersion`,

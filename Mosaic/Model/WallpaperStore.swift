@@ -1,5 +1,7 @@
 import AppKit
+import CryptoKit
 import Observation
+import UniformTypeIdentifiers
 
 enum Slot: String, Codable, CaseIterable {
     case desktop, lock
@@ -163,34 +165,89 @@ final class WallpaperStore {
     }
 
     /// Starts copying an image into a slot: shows the slot as busy and
-    /// reserves the file the copy goes to, so cleanup can't delete it before
-    /// the copy finishes. Always followed by `finishImport`.
+    /// reserves a temporary file for the copy, so cleanup can't delete it
+    /// before the copy finishes. Always followed by `finishImport`.
     func beginImport(slot: Slot, displayID: String, fileExtension: String) -> URL {
-        let ext = fileExtension.isEmpty ? "img" : fileExtension.lowercased()
-        let name = "\(UUID().uuidString).\(ext)"
+        let name = "\(UUID().uuidString).\(Self.normalizedExtension(fileExtension))"
         importing.insert(ImportKey(display: displayID, slot: slot))
         reservedImages.insert(name)
         return imagesDirectory.appendingPathComponent(name)
     }
 
-    /// Uses the copied image, or reports why the copy failed.
-    func finishImport(_ destination: URL, error: Error?, sourceName: String, slot: Slot, displayID: String) {
-        importing.remove(ImportKey(display: displayID, slot: slot))
-        reservedImages.remove(destination.lastPathComponent)
+    /// Uses the copied image, or reports why the copy failed. The copy is
+    /// renamed after a hash of its contents, so the same image picked for
+    /// several slots is stored once.
+    func finishImport(_ temporary: URL, error: Error?, sourceName: String, slot: Slot, displayID: String) {
+        let key = ImportKey(display: displayID, slot: slot)
         if let error {
+            importing.remove(key)
+            reservedImages.remove(temporary.lastPathComponent)
             importFailed(sourceName, error)
-            try? FileManager.default.removeItem(at: destination)
+            try? FileManager.default.removeItem(at: temporary)
             return
         }
-        guard let display = displays.first(where: { $0.id == displayID }) else {
-            // The screen went away during the copy.
-            removeUnusedImages()
-            return
+        Task {
+            let hash = await Task.detached(priority: .userInitiated) {
+                Result { try Self.sha256(of: temporary) }
+            }.value
+            importing.remove(key)
+            reservedImages.remove(temporary.lastPathComponent)
+            let fileName: String
+            switch hash {
+            case .failure(let error):
+                importFailed(sourceName, error)
+                try? FileManager.default.removeItem(at: temporary)
+                return
+            case .success(let hex):
+                // On the main actor, like cleanup, so an existing file can't be
+                // deleted between this check and `update` using it.
+                fileName = storeOnce(temporary, as: "\(hex).\(temporary.pathExtension)")
+            }
+            guard let display = displays.first(where: { $0.id == displayID }) else {
+                // The screen went away during the copy.
+                removeUnusedImages()
+                return
+            }
+            lastError = nil
+            let replaced = wallpapers(for: display)[slot] != nil
+            let undo = replaced ? "Replaced the \(slot.title.lowercased()) image on \(display.name)" : nil
+            update(display, undo: undo) { $0[slot] = fileName }
         }
-        lastError = nil
-        let replaced = wallpapers(for: display)[slot] != nil
-        let undo = replaced ? "Replaced the \(slot.title.lowercased()) image on \(display.name)" : nil
-        update(display, undo: undo) { $0[slot] = destination.lastPathComponent }
+    }
+
+    /// Moves the temporary copy to `name`, or drops it when an identical image
+    /// is already stored there. Returns the file name to use.
+    private func storeOnce(_ temporary: URL, as name: String) -> String {
+        let destination = imagesDirectory.appendingPathComponent(name)
+        let fileManager = FileManager.default
+        if fileManager.fileExists(atPath: destination.path) {
+            try? fileManager.removeItem(at: temporary)
+            return name
+        }
+        do {
+            try fileManager.moveItem(at: temporary, to: destination)
+            return name
+        } catch {
+            NSLog("Mosaic: could not rename \(temporary.lastPathComponent) to \(name): \(error)")
+            return temporary.lastPathComponent
+        }
+    }
+
+    /// `jpeg` and `jpg` give the same name, so the same bytes match.
+    private static func normalizedExtension(_ ext: String) -> String {
+        guard !ext.isEmpty else { return "img" }
+        return (UTType(filenameExtension: ext)?.preferredFilenameExtension ?? ext).lowercased()
+    }
+
+    /// Reads the file in 1 MB chunks, so a large photo isn't loaded whole.
+    nonisolated private static func sha256(of url: URL) throws -> String {
+        let handle = try FileHandle(forReadingFrom: url)
+        defer { try? handle.close() }
+        var hasher = SHA256()
+        while let chunk = try handle.read(upToCount: 1 << 20), !chunk.isEmpty {
+            hasher.update(data: chunk)
+        }
+        return hasher.finalize().map { String(format: "%02x", $0) }.joined()
     }
 
     func importFailed(_ sourceName: String, _ error: Error) {
