@@ -93,8 +93,50 @@ struct WallpaperTile: View {
                 .help("Clear \(slot.title.lowercased()) image")
             }
         }
+        .contextMenu { menu(fileName: fileName, isLinked: isLinked, isImporting: isImporting) }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("\(display.name), \(slot.title)")
+    }
+
+    /// Right-click (or Control-click) actions for this tile.
+    @ViewBuilder
+    private func menu(fileName: String?, isLinked: Bool, isImporting: Bool) -> some View {
+        let others = store.displays.filter { $0.id != display.id }
+        let hasImage = fileName != nil && !isImporting
+
+        Button("Choose Image…", systemImage: "photo.badge.plus", action: choose)
+            .disabled(isLinked || isImporting)
+
+        if !others.isEmpty {
+            Divider()
+            Button("Use on All Screens", systemImage: "rectangle.on.rectangle") {
+                store.useOnAllScreens(slot, from: display)
+            }
+            .disabled(!hasImage)
+            Menu("Copy to", systemImage: "arrow.right.doc.on.clipboard") {
+                ForEach(others) { target in
+                    Button(target.name) { store.copy(slot, from: display, to: target) }
+                }
+            }
+            .disabled(!hasImage)
+        }
+
+        Button("Swap Desktop and Lock Screen", systemImage: "arrow.left.arrow.right") {
+            store.swapDesktopAndLock(on: display)
+        }
+        .disabled(isImporting || !store.canSwap(on: display))
+
+        Divider()
+        Button("Show in Finder", systemImage: "folder") {
+            if let url = store.imageURL(fileName) {
+                NSWorkspace.shared.activateFileViewerSelecting([url])
+            }
+        }
+        .disabled(!hasImage)
+        Button("Clear \(slot.title) Image", systemImage: "xmark", role: .destructive) {
+            store.clear(slot, display: display)
+        }
+        .disabled(!hasImage)
     }
 
     private func choose() {

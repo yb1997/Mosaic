@@ -11,6 +11,12 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- Right-click menu on each tile: Choose Image…, Use on All Screens, Copy to
+  another screen, Swap Desktop and Lock Screen, Show in Finder, and Clear.
+  Copying a lock screen image turns off "Same as desktop" on the screens it
+  goes to. One Undo puts back every screen the change touched.
+
 ### Changed
 - The updater mounts and ejects the downloaded DMG with `diskutil image
   attach` / `diskutil eject` instead of the deprecated `hdiutil`, which stays

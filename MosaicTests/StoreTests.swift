@@ -221,6 +221,97 @@ struct StoreDisplayTests {
         #expect(sandbox.imageFiles.isEmpty)
     }
 
+    // MARK: Tile menu
+
+    private func twoDisplays() -> (Display, Display, Display) {
+        let screen = NSScreen.screens[0]
+        return (Display(id: "D1", name: "One", isMain: true, screen: screen),
+                Display(id: "D2", name: "Two", isMain: false, screen: screen),
+                Display(id: "D3", name: "Three", isMain: false, screen: screen))
+    }
+
+    @Test func useOnAllScreensCopiesTheSlotAndUndoesAtOnce() throws {
+        let sandbox = Sandbox()
+        for name in ["a.png", "b.png", "old.png"] { try sandbox.addImage(name) }
+        try sandbox.writeState("""
+            {"D1": {"desktop": "a.png", "lock": "b.png"},
+             "D2": {"desktop": "old.png"},
+             "D3": {"lockSameAsDesktop": true}}
+            """)
+        let (one, two, three) = twoDisplays()
+        let store = sandbox.store(displays: [one, two, three])
+
+        store.useOnAllScreens(.lock, from: one)
+        #expect(store.wallpapers(for: two).lock == "b.png")
+        #expect(store.wallpapers(for: two).desktop == "old.png")
+        #expect(store.wallpapers(for: three).lock == "b.png")
+        #expect(store.wallpapers(for: three).lockSameAsDesktop == false)
+        #expect(store.undoable != nil)
+
+        store.undo()
+        #expect(store.wallpapers(for: two) == { var e = ScreenWallpapers(); e.desktop = "old.png"; return e }())
+        #expect(store.wallpapers(for: three).lockSameAsDesktop == true)
+        #expect(store.wallpapers(for: three).lock == nil)
+    }
+
+    @Test func copyReplacesOnlyTheTarget() throws {
+        let sandbox = Sandbox()
+        for name in ["a.png", "old.png"] { try sandbox.addImage(name) }
+        try sandbox.writeState(#"{"D1": {"desktop": "a.png"}, "D2": {"desktop": "old.png"}, "D3": {"desktop": "old.png"}}"#)
+        let (one, two, three) = twoDisplays()
+        let store = sandbox.store(displays: [one, two, three])
+
+        store.copy(.desktop, from: one, to: two)
+        #expect(store.wallpapers(for: two).desktop == "a.png")
+        #expect(store.wallpapers(for: three).desktop == "old.png")
+        // The replaced image stays while Undo is offered.
+        #expect(sandbox.imageFiles == ["a.png", "old.png"])
+    }
+
+    @Test func emptySlotCopiesNothing() throws {
+        let sandbox = Sandbox()
+        let (one, two, _) = twoDisplays()
+        let store = sandbox.store(displays: [one, two])
+        store.useOnAllScreens(.desktop, from: one)
+        #expect(store.screens.isEmpty)
+        #expect(store.undoable == nil)
+    }
+
+    @Test func linkedLockSlotHasNoImageToCopy() throws {
+        let sandbox = Sandbox()
+        try sandbox.addImage("a.png")
+        try sandbox.addImage("b.png")
+        try sandbox.writeState(#"{"D1": {"desktop": "a.png", "lock": "b.png", "lockSameAsDesktop": true}}"#)
+        let (one, two, _) = twoDisplays()
+        let store = sandbox.store(displays: [one, two])
+        #expect(store.image(.lock, on: one) == nil)
+        store.copy(.lock, from: one, to: two)
+        #expect(store.wallpapers(for: two).lock == nil)
+    }
+
+    @Test func swapNeedsTwoDifferentImages() throws {
+        let sandbox = Sandbox()
+        for name in ["a.png", "b.png"] { try sandbox.addImage(name) }
+        try sandbox.writeState("""
+            {"D1": {"desktop": "a.png", "lock": "b.png"},
+             "D2": {"desktop": "a.png"},
+             "D3": {"desktop": "a.png", "lock": "b.png", "lockSameAsDesktop": true}}
+            """)
+        let (one, two, three) = twoDisplays()
+        let store = sandbox.store(displays: [one, two, three])
+        #expect(!store.canSwap(on: two))
+        #expect(!store.canSwap(on: three))
+
+        store.swapDesktopAndLock(on: one)
+        #expect(store.wallpapers(for: one).desktop == "b.png")
+        #expect(store.wallpapers(for: one).lock == "a.png")
+        store.undo()
+        #expect(store.wallpapers(for: one).desktop == "a.png")
+
+        store.swapDesktopAndLock(on: two)
+        #expect(store.wallpapers(for: two).desktop == "a.png")
+    }
+
     @Test func clearingTheDesktopTellsTheEngine() throws {
         let sandbox = Sandbox()
         try sandbox.addImage("a.png")

@@ -11,6 +11,8 @@ after the 1.3.0 release.
 - [ ] **1.3.0 changes in the app.** Covered by unit tests but not yet tried by
   hand: × on a desktop tile shows the default wallpaper (on every Space), the
   error close button, and the duplicate-name note in both name fields.
+- [ ] **Tile context menu.** Store actions are unit-tested; the menu itself
+  (items enabled at the right times, Show in Finder) not yet tried by hand.
 
 ## Improvements
 
@@ -18,8 +20,6 @@ _All done for now._
 
 ## Features
 
-- [ ] **Tile context menu.** Use on All Screens, Swap Desktop ↔ Lock, Copy to
-  another screen, Show in Finder.
 - [ ] **Shortcuts / App Intents.** A "Switch to Profile" intent, usable from
   Shortcuts, Spotlight and Focus filters.
 - [ ] **Profile per monitor setup.** Remember a profile for each set of

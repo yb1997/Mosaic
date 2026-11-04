@@ -75,8 +75,8 @@ final class WallpaperStore {
     @ObservationIgnored private var reservedImages: Set<String> = []
 
     struct UndoableChange {
-        let displayID: String
-        let previous: ScreenWallpapers
+        /// Each changed screen's entry from before the change.
+        let previous: [String: ScreenWallpapers]
         let message: String
     }
 
@@ -280,11 +280,13 @@ final class WallpaperStore {
         update(display, undo: "Cleared the \(slot.title.lowercased()) image on \(display.name)") { $0[slot] = nil }
     }
 
-    /// Puts back the screen's images from before the last clear or replace.
+    /// Puts back the images from before the last change that offered Undo.
     func undo() {
         guard let change = undoable else { return }
         undoable = nil
-        screens[change.displayID] = change.previous == ScreenWallpapers() ? nil : change.previous
+        for (id, entry) in change.previous {
+            screens[id] = entry == ScreenWallpapers() ? nil : entry
+        }
         save()
         removeUnusedImages()
         onChange()
@@ -299,6 +301,48 @@ final class WallpaperStore {
 
     func setLockSameAsDesktop(_ same: Bool, display: Display) {
         update(display) { $0.lockSameAsDesktop = same }
+    }
+
+    // MARK: Tile menu
+
+    /// The image to show in a slot. A lock slot that follows the desktop has none of its own.
+    func image(_ slot: Slot, on display: Display) -> String? {
+        let entry = wallpapers(for: display)
+        return slot == .lock && entry.lockSameAsDesktop ? nil : entry[slot]
+    }
+
+    /// Puts this slot's image in the same slot on every other connected screen.
+    func useOnAllScreens(_ slot: Slot, from display: Display) {
+        let others = displays.filter { $0.id != display.id }
+        copy(slot, from: display, to: others, undo: "Used the \(slot.title.lowercased()) image from \(display.name) on all screens")
+    }
+
+    /// Puts this slot's image in the same slot on another screen.
+    func copy(_ slot: Slot, from display: Display, to target: Display) {
+        copy(slot, from: display, to: [target], undo: "Copied the \(slot.title.lowercased()) image to \(target.name)")
+    }
+
+    private func copy(_ slot: Slot, from display: Display, to targets: [Display], undo: String) {
+        guard let file = image(slot, on: display), !targets.isEmpty else { return }
+        update(targets, undo: undo) { _, entry in
+            entry[slot] = file
+            // Asking for this lock image means showing it, not the desktop.
+            if slot == .lock { entry.lockSameAsDesktop = false }
+        }
+    }
+
+    /// Whether the screen has two different images to swap.
+    func canSwap(on display: Display) -> Bool {
+        let entry = wallpapers(for: display)
+        guard !entry.lockSameAsDesktop, let desktop = entry.desktop, let lock = entry.lock else { return false }
+        return desktop != lock
+    }
+
+    func swapDesktopAndLock(on display: Display) {
+        guard canSwap(on: display) else { return }
+        update(display, undo: "Swapped the desktop and lock screen images on \(display.name)") { entry in
+            swap(&entry.desktop, &entry.lock)
+        }
     }
 
     /// Whether another profile already has this name, ignoring case and
@@ -355,10 +399,20 @@ final class WallpaperStore {
     /// `undo` describes the change when it loses an image, so it can be undone
     /// until the next change.
     private func update(_ display: Display, undo: String? = nil, _ change: (inout ScreenWallpapers) -> Void) {
-        var entry = wallpapers(for: display)
-        undoable = undo.map { UndoableChange(displayID: display.id, previous: entry, message: $0) }
-        change(&entry)
-        screens[display.id] = entry == ScreenWallpapers() ? nil : entry
+        update([display], undo: undo) { _, entry in change(&entry) }
+    }
+
+    /// Changes several screens at once, with one Undo for all of them.
+    private func update(_ targets: [Display], undo: String? = nil,
+                        _ change: (Display, inout ScreenWallpapers) -> Void) {
+        var previous: [String: ScreenWallpapers] = [:]
+        for display in targets {
+            var entry = wallpapers(for: display)
+            previous[display.id] = entry
+            change(display, &entry)
+            screens[display.id] = entry == ScreenWallpapers() ? nil : entry
+        }
+        undoable = undo.map { UndoableChange(previous: previous, message: $0) }
         save()
         removeUnusedImages()
         onChange()
@@ -386,7 +440,7 @@ final class WallpaperStore {
     /// undo, nor a copy still in progress use.
     private func removeUnusedImages() {
         let all = [screens] + profiles.map(\.screens)
-        let entries = all.flatMap(\.values) + [undoable?.previous].compactMap { $0 }
+        let entries = all.flatMap(\.values) + (undoable?.previous.values.map { $0 } ?? [])
         let used = Set(entries.flatMap { [$0.desktop, $0.lock] }.compactMap { $0 }).union(reservedImages)
         let files = (try? FileManager.default.contentsOfDirectory(atPath: imagesDirectory.path)) ?? []
         for file in files where !used.contains(file) {
