@@ -8,7 +8,10 @@ wallpaper, with an optional separate lock screen image per screen.
   <img src="docs/screenshots/settings.png" width="532" alt="Settings window with Open at Login, saved profiles and update options">
 </p>
 
-- Click a tile in the menu bar panel to pick an image; the × clears it.
+- Click a tile in the menu bar panel to pick an image; the × clears it, and
+  Undo (⌘Z) in the panel puts it back.
+- Or drag an image onto the menu bar icon: a shelf with every screen's tiles
+  opens under it, and you drop the image on a tile.
 - A screen with no lock screen image shows its desktop image when locked.
   "Lock screen same as desktop" does the same while keeping the chosen lock
   image for when it's turned off.

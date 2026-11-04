@@ -19,6 +19,7 @@ struct MosaicApp: App {
         engine = WallpaperEngine(store: store)
         #endif
         UpdateService.shared.startAutomaticChecks()
+        DispatchQueue.main.async { StatusItemDropTarget.start(store: store) }
     }
 
     var body: some Scene {

@@ -66,6 +66,22 @@ final class WallpaperStore {
     }
     private(set) var displays: [Display] = Display.connected
     private(set) var lastError: String?
+    /// The last clear or replace, until the next change.
+    private(set) var undoable: UndoableChange?
+    private var importing: Set<ImportKey> = []
+    /// Files being copied in, not yet referenced by `screens`.
+    @ObservationIgnored private var reservedImages: Set<String> = []
+
+    struct UndoableChange {
+        let displayID: String
+        let previous: ScreenWallpapers
+        let message: String
+    }
+
+    private struct ImportKey: Hashable {
+        let display: String
+        let slot: Slot
+    }
 
     /// Called after any change so the engine can re-apply wallpapers.
     @ObservationIgnored var onChange: () -> Void = {}
@@ -81,15 +97,25 @@ final class WallpaperStore {
         stateURL = support.appendingPathComponent("state.json")
         profilesURL = support.appendingPathComponent("profiles.json")
         try? FileManager.default.createDirectory(at: imagesDirectory, withIntermediateDirectories: true)
-        if let data = try? Data(contentsOf: stateURL),
-           let saved = try? JSONDecoder().decode([String: ScreenWallpapers].self, from: data) {
-            screens = saved
+        var loadedEverything = true
+        if let data = try? Data(contentsOf: stateURL) {
+            if let saved = try? JSONDecoder().decode([String: ScreenWallpapers].self, from: data) {
+                screens = saved
+            } else {
+                loadedEverything = false
+            }
         }
-        if let data = try? Data(contentsOf: profilesURL),
-           let saved = try? JSONDecoder().decode([Profile].self, from: data) {
-            profiles = saved
+        if let data = try? Data(contentsOf: profilesURL) {
+            if let saved = try? JSONDecoder().decode([Profile].self, from: data) {
+                profiles = saved
+            } else {
+                loadedEverything = false
+            }
         }
         lastProfileID = UserDefaults.standard.string(forKey: "lastProfileID").flatMap(UUID.init)
+        // Images kept for an undo that was still pending when the app quit. Only
+        // when both files were read, or an unreadable one would lose its images.
+        if loadedEverything { removeUnusedImages() }
     }
 
     /// The profile last applied or saved, so edits made afterwards can be saved back to it.
@@ -114,21 +140,82 @@ final class WallpaperStore {
         displays = Display.connected
     }
 
+    func isImporting(_ slot: Slot, display: Display) -> Bool {
+        importing.contains(ImportKey(display: display.id, slot: slot))
+    }
+
+    /// Copies the image in the background (it may be large, on a slow disk, or
+    /// an iCloud file still downloading), then uses it.
     func setImage(from source: URL, slot: Slot, display: Display) {
-        let ext = source.pathExtension.isEmpty ? "img" : source.pathExtension.lowercased()
+        let destination = beginImport(slot: slot, displayID: display.id, fileExtension: source.pathExtension)
+        let displayID = display.id
+        Task {
+            let error = await Task.detached(priority: .userInitiated) { () -> Error? in
+                do {
+                    try FileManager.default.copyItem(at: source, to: destination)
+                    return nil
+                } catch {
+                    return error
+                }
+            }.value
+            finishImport(destination, error: error, sourceName: source.lastPathComponent, slot: slot, displayID: displayID)
+        }
+    }
+
+    /// Starts copying an image into a slot: shows the slot as busy and
+    /// reserves the file the copy goes to, so cleanup can't delete it before
+    /// the copy finishes. Always followed by `finishImport`.
+    func beginImport(slot: Slot, displayID: String, fileExtension: String) -> URL {
+        let ext = fileExtension.isEmpty ? "img" : fileExtension.lowercased()
         let name = "\(UUID().uuidString).\(ext)"
-        do {
-            try FileManager.default.copyItem(at: source, to: imagesDirectory.appendingPathComponent(name))
-            lastError = nil
-        } catch {
-            lastError = "Couldn't use \(source.lastPathComponent): \(error.localizedDescription)"
+        importing.insert(ImportKey(display: displayID, slot: slot))
+        reservedImages.insert(name)
+        return imagesDirectory.appendingPathComponent(name)
+    }
+
+    /// Uses the copied image, or reports why the copy failed.
+    func finishImport(_ destination: URL, error: Error?, sourceName: String, slot: Slot, displayID: String) {
+        importing.remove(ImportKey(display: displayID, slot: slot))
+        reservedImages.remove(destination.lastPathComponent)
+        if let error {
+            importFailed(sourceName, error)
+            try? FileManager.default.removeItem(at: destination)
             return
         }
-        update(display) { $0[slot] = name }
+        guard let display = displays.first(where: { $0.id == displayID }) else {
+            // The screen went away during the copy.
+            removeUnusedImages()
+            return
+        }
+        lastError = nil
+        let replaced = wallpapers(for: display)[slot] != nil
+        let undo = replaced ? "Replaced the \(slot.title.lowercased()) image on \(display.name)" : nil
+        update(display, undo: undo) { $0[slot] = destination.lastPathComponent }
+    }
+
+    func importFailed(_ sourceName: String, _ error: Error) {
+        lastError = "Couldn't use \(sourceName): \(error.localizedDescription)"
     }
 
     func clear(_ slot: Slot, display: Display) {
-        update(display) { $0[slot] = nil }
+        update(display, undo: "Cleared the \(slot.title.lowercased()) image on \(display.name)") { $0[slot] = nil }
+    }
+
+    /// Puts back the screen's images from before the last clear or replace.
+    func undo() {
+        guard let change = undoable else { return }
+        undoable = nil
+        screens[change.displayID] = change.previous == ScreenWallpapers() ? nil : change.previous
+        save()
+        removeUnusedImages()
+        onChange()
+    }
+
+    /// Ends the chance to undo; the images it kept can now be deleted.
+    func dismissUndo() {
+        guard undoable != nil else { return }
+        undoable = nil
+        removeUnusedImages()
     }
 
     func setLockSameAsDesktop(_ same: Bool, display: Display) {
@@ -161,6 +248,7 @@ final class WallpaperStore {
     func apply(_ profile: Profile) {
         screens = profile.screens
         lastProfileID = profile.id
+        undoable = nil
         save()
         removeUnusedImages()
         onChange()
@@ -172,8 +260,11 @@ final class WallpaperStore {
         saveProfiles()
     }
 
-    private func update(_ display: Display, _ change: (inout ScreenWallpapers) -> Void) {
+    /// `undo` describes the change when it loses an image, so it can be undone
+    /// until the next change.
+    private func update(_ display: Display, undo: String? = nil, _ change: (inout ScreenWallpapers) -> Void) {
         var entry = wallpapers(for: display)
+        undoable = undo.map { UndoableChange(displayID: display.id, previous: entry, message: $0) }
         change(&entry)
         screens[display.id] = entry == ScreenWallpapers() ? nil : entry
         save()
@@ -199,10 +290,12 @@ final class WallpaperStore {
         }
     }
 
-    /// Deletes images that neither the current choices nor any profile use.
+    /// Deletes images that neither the current choices, any profile, a pending
+    /// undo, nor a copy still in progress use.
     private func removeUnusedImages() {
         let all = [screens] + profiles.map(\.screens)
-        let used = Set(all.flatMap(\.values).flatMap { [$0.desktop, $0.lock] }.compactMap { $0 })
+        let entries = all.flatMap(\.values) + [undoable?.previous].compactMap { $0 }
+        let used = Set(entries.flatMap { [$0.desktop, $0.lock] }.compactMap { $0 }).union(reservedImages)
         let files = (try? FileManager.default.contentsOfDirectory(atPath: imagesDirectory.path)) ?? []
         for file in files where !used.contains(file) {
             try? FileManager.default.removeItem(at: imagesDirectory.appendingPathComponent(file))

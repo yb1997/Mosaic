@@ -11,6 +11,23 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- Drag an image onto the menu bar icon to show a drop shelf with every
+  screen's tiles, and drop it on one. Works with files from Finder and on the
+  icon on every display. (The menu panel itself can't take drops: it closes
+  as soon as you click in another app.)
+- Undo after clearing or replacing an image: the panel shows what changed with
+  an Undo button (⌘Z) until the next change or until the panel closes.
+
+### Changed
+- Thumbnails are decoded in the background, so the panel opens without
+  waiting on full-size photos. Tiles show a spinner until they're ready.
+- Picked images are copied in the background (large files, external drives
+  and iCloud files that still need downloading no longer freeze the panel).
+  The tile shows a spinner while it copies.
+- Plugging in or waking a monitor re-applies wallpapers once, after the
+  burst of screen-change notifications settles, instead of once for each.
+
 ## [1.1.0] - 2026-11-03
 
 ### Added

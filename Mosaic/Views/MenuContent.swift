@@ -34,6 +34,23 @@ struct MenuContent: View {
                     .frame(width: contentWidth)
             }
 
+            if let change = store.undoable {
+                HStack(spacing: 8) {
+                    Text(change.message)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Button("Undo") { store.undo() }
+                        .buttonStyle(.glass)
+                        .controlSize(.small)
+                        .keyboardShortcut("z", modifiers: .command)
+                        .help("Put the image back (⌘Z)")
+                }
+                .frame(width: contentWidth)
+                .transition(.opacity)
+            }
+
             if UpdateService.shared.hasUpdate {
                 UpdateBanner()
                     .frame(width: contentWidth)
@@ -68,6 +85,10 @@ struct MenuContent: View {
         }
         .padding(14)
         .fixedSize()
+        .animation(.easeOut(duration: 0.15), value: store.undoable?.message)
+        // Undo lasts while the panel is open; a replace made through the open
+        // panel (which closes this one first) can be undone the next time it opens.
+        .onDisappear { store.dismissUndo() }
     }
 
     private var displayList: some View {
@@ -90,9 +111,11 @@ struct MenuContent: View {
     }
 }
 
-private struct DisplaySection: View {
+/// One screen's tiles and its "same as desktop" switch. Also used by the drop shelf.
+struct DisplaySection: View {
     @Environment(WallpaperStore.self) private var store
     let display: Display
+    var showsLockToggle = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -106,16 +129,18 @@ private struct DisplaySection: View {
                         .frame(width: 136, height: 85)
                 }
             }
-            Toggle(isOn: Binding(
-                get: { store.wallpapers(for: display).lockSameAsDesktop },
-                set: { store.setLockSameAsDesktop($0, display: display) }
-            )) {
-                Text("Lock screen same as desktop")
-                    .font(.caption)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            if showsLockToggle {
+                Toggle(isOn: Binding(
+                    get: { store.wallpapers(for: display).lockSameAsDesktop },
+                    set: { store.setLockSameAsDesktop($0, display: display) }
+                )) {
+                    Text("Lock screen same as desktop")
+                        .font(.caption)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .toggleStyle(.switch)
+                .controlSize(.mini)
             }
-            .toggleStyle(.switch)
-            .controlSize(.mini)
         }
     }
 }

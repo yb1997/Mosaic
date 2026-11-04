@@ -13,6 +13,7 @@ final class WallpaperEngine {
     /// pictures or aerials back, so unlocking restores this instead.
     private var settingsBeforeLock: Data?
     private var observers: [(NotificationCenter, NSObjectProtocol)] = []
+    private var screenChange: Task<Void, Never>?
 
     private let options: [NSWorkspace.DesktopImageOptionKey: Any] = [
         .imageScaling: NSImageScaling.scaleProportionallyUpOrDown.rawValue,
@@ -35,9 +36,16 @@ final class WallpaperEngine {
         // setDesktopImageURL only changes the current Space, so cover each Space as it is shown.
         observe(workspace, NSWorkspace.activeSpaceDidChangeNotification.rawValue) { $0.apply() }
         observe(workspace, NSWorkspace.didWakeNotification.rawValue) { $0.apply() }
-        observe(.default, NSApplication.didChangeScreenParametersNotification.rawValue) {
-            $0.store.refreshDisplays()
-            $0.apply()
+        // This arrives several times in a row when a monitor is plugged in or
+        // wakes, so act once things have settled.
+        observe(.default, NSApplication.didChangeScreenParametersNotification.rawValue) { engine in
+            engine.screenChange?.cancel()
+            engine.screenChange = Task { [weak engine] in
+                try? await Task.sleep(for: .milliseconds(300))
+                guard !Task.isCancelled, let engine else { return }
+                engine.store.refreshDisplays()
+                engine.apply()
+            }
         }
         apply()
     }
