@@ -18,8 +18,6 @@ after the 1.2.0 release.
 
 ## Improvements
 
-- [ ] **Unique profile names.** Two profiles can share a name; block or flag
-  duplicates when saving or renaming.
 - [ ] **Tests and CI.** No test target yet. Start with `isNewerVersion`,
   decoding older `state.json` / `profiles.json`, `activeProfile` matching,
   which files image cleanup keeps (including pending undo and imports in

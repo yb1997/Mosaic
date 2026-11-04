@@ -18,6 +18,8 @@ All notable changes to this project are documented here. The format follows
 - The same image picked for several screens, or as both desktop and lock
   screen, is now stored once. Copied images are named by a hash of their
   contents. Images already stored keep their names.
+- Two profiles can no longer share a name (ignoring case). Saving or renaming
+  to a name in use is refused, with a note under the name field.
 - Errors are logged with `os.Logger` (subsystem `in.ybear.Mosaic`) instead of
   `NSLog`, including failed update checks and installs.
 

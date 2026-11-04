@@ -288,7 +288,19 @@ final class WallpaperStore {
         update(display) { $0.lockSameAsDesktop = same }
     }
 
+    /// Whether another profile already has this name, ignoring case and
+    /// surrounding spaces. `profile` is the one being renamed, if any.
+    func isProfileNameTaken(_ name: String, excluding profile: Profile? = nil) -> Bool {
+        let wanted = Self.normalizedName(name)
+        return profiles.contains { $0.id != profile?.id && Self.normalizedName($0.name) == wanted }
+    }
+
+    private static func normalizedName(_ name: String) -> String {
+        name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
     func saveProfile(named name: String) {
+        guard !isProfileNameTaken(name) else { return }
         let profile = Profile(name: name, screens: screens)
         profiles.append(profile)
         lastProfileID = profile.id
@@ -301,6 +313,7 @@ final class WallpaperStore {
     }
 
     func rename(_ profile: Profile, to name: String) {
+        guard !isProfileNameTaken(name, excluding: profile) else { return }
         changeProfile(profile) { $0.name = name }
     }
 

@@ -48,18 +48,25 @@ struct ProfileBar: View {
     }
 
     private var nameField: some View {
-        GlassEffectContainer {
-            HStack(spacing: 6) {
-                TextField("Profile name", text: $newName)
-                    .textFieldStyle(.roundedBorder)
-                    .focused($nameFocused)
-                    .onSubmit(save)
-                    .onExitCommand { isNaming = false }
-                Button("Cancel") { isNaming = false }
-                    .buttonStyle(.glass)
-                Button("Save", action: save)
-                    .buttonStyle(.glassProminent)
-                    .disabled(trimmedName.isEmpty)
+        VStack(alignment: .leading, spacing: 4) {
+            GlassEffectContainer {
+                HStack(spacing: 6) {
+                    TextField("Profile name", text: $newName)
+                        .textFieldStyle(.roundedBorder)
+                        .focused($nameFocused)
+                        .onSubmit(save)
+                        .onExitCommand { isNaming = false }
+                    Button("Cancel") { isNaming = false }
+                        .buttonStyle(.glass)
+                    Button("Save", action: save)
+                        .buttonStyle(.glassProminent)
+                        .disabled(!canSave)
+                }
+            }
+            if nameTaken {
+                Text("A profile with this name already exists.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
         .onAppear { nameFocused = true }
@@ -69,8 +76,16 @@ struct ProfileBar: View {
         newName.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    private var nameTaken: Bool {
+        store.isProfileNameTaken(trimmedName)
+    }
+
+    private var canSave: Bool {
+        !trimmedName.isEmpty && !nameTaken
+    }
+
     private func save() {
-        guard !trimmedName.isEmpty else { return }
+        guard canSave else { return }
         store.saveProfile(named: trimmedName)
         isNaming = false
     }

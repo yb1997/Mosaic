@@ -47,15 +47,22 @@ private struct ProfileRow: View {
     var body: some View {
         HStack {
             if let draft {
-                TextField("Name", text: Binding(get: { draft }, set: { self.draft = $0 }))
-                    .labelsHidden()
-                    .focused($focused)
-                    .onSubmit(commit)
-                    .onExitCommand { self.draft = nil }
-                    .onAppear { focused = true }
+                VStack(alignment: .leading, spacing: 4) {
+                    TextField("Name", text: Binding(get: { draft }, set: { self.draft = $0 }))
+                        .labelsHidden()
+                        .focused($focused)
+                        .onSubmit(commit)
+                        .onExitCommand { self.draft = nil }
+                        .onAppear { focused = true }
+                    if isTaken(draft) {
+                        Text("Another profile already has this name.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
                 Button("Save", action: commit)
                     .buttonStyle(.glassProminent)
-                    .disabled(trimmed(draft).isEmpty)
+                    .disabled(trimmed(draft).isEmpty || isTaken(draft))
                     .help("Save the new name")
             } else {
                 Text(profile.name)
@@ -82,8 +89,12 @@ private struct ProfileRow: View {
         name.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    private func isTaken(_ name: String) -> Bool {
+        store.isProfileNameTaken(name, excluding: profile)
+    }
+
     private func commit() {
-        guard let draft, !trimmed(draft).isEmpty else { return }
+        guard let draft, !trimmed(draft).isEmpty, !isTaken(draft) else { return }
         if trimmed(draft) != profile.name { store.rename(profile, to: trimmed(draft)) }
         self.draft = nil
     }
