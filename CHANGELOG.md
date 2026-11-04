@@ -11,6 +11,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-04
+
 ### Added
 - Drag an image onto the menu bar icon to show a drop shelf with every
   screen's tiles, and drop it on one. Works with files from Finder and on the
@@ -63,6 +65,7 @@ All notable changes to this project are documented here. The format follows
 - Wallpapers are re-applied after switching Spaces, waking, and screen changes.
   The app does nothing in between.
 
-[Unreleased]: https://github.com/yb1997/Mosaic/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/yb1997/Mosaic/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/yb1997/Mosaic/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/yb1997/Mosaic/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/yb1997/Mosaic/releases/tag/v1.0.0
