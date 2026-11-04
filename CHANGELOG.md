@@ -11,6 +11,11 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+- An error in the panel (such as an image that couldn't be copied) now has a
+  close button, and goes away when the panel closes instead of staying until
+  a later pick succeeds.
+
 ### Fixed
 - A Lock Screen tile set to "Same as desktop" no longer shows the words twice
   when the desktop has no image.

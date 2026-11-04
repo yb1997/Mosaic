@@ -197,6 +197,10 @@ final class WallpaperStore {
         lastError = "Couldn't use \(sourceName): \(error.localizedDescription)"
     }
 
+    func dismissError() {
+        lastError = nil
+    }
+
     func clear(_ slot: Slot, display: Display) {
         update(display, undo: "Cleared the \(slot.title.lowercased()) image on \(display.name)") { $0[slot] = nil }
     }

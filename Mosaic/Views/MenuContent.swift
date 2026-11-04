@@ -57,11 +57,25 @@ struct MenuContent: View {
             }
 
             if let error = store.lastError {
-                Text(error)
-                    .font(.caption)
-                    .foregroundStyle(.red)
-                    .frame(width: contentWidth, alignment: .leading)
-                    .fixedSize(horizontal: false, vertical: true)
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button {
+                        store.dismissError()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.caption.weight(.semibold))
+                    }
+                    .buttonStyle(.borderless)
+                    .foregroundStyle(.secondary)
+                    .help("Dismiss")
+                    .accessibilityLabel("Dismiss error")
+                }
+                .frame(width: contentWidth)
+                .transition(.opacity)
             }
 
             GlassEffectContainer {
@@ -86,9 +100,14 @@ struct MenuContent: View {
         .padding(14)
         .fixedSize()
         .animation(.easeOut(duration: 0.15), value: store.undoable?.message)
+        .animation(.easeOut(duration: 0.15), value: store.lastError)
         // Undo lasts while the panel is open; a replace made through the open
         // panel (which closes this one first) can be undone the next time it opens.
-        .onDisappear { store.dismissUndo() }
+        // An error, once seen, goes when the panel closes.
+        .onDisappear {
+            store.dismissUndo()
+            store.dismissError()
+        }
     }
 
     private var displayList: some View {
