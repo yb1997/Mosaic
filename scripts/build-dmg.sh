@@ -46,7 +46,8 @@ mkdir -p "$STAGING_DIR"
 cp -R "$APP_PATH" "$STAGING_DIR/"
 ln -s /Applications "$STAGING_DIR/Applications"
 rm -f "$DMG_OUTPUT"
-hdiutil create -volname "Mosaic" -srcfolder "$STAGING_DIR" -ov -format UDZO "$DMG_OUTPUT" >/dev/null
+# Compressed, read-only image of the staging folder.
+diskutil image create from --format UDZO --volumeName "Mosaic" "$STAGING_DIR" "$DMG_OUTPUT" >/dev/null
 
 echo "=== Done ==="
 ls -lh "$DMG_OUTPUT"

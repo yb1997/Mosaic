@@ -24,6 +24,8 @@ All notable changes to this project are documented here. The format follows
   `NSLog`, including failed update checks and installs.
 - Unit tests and a GitHub Actions workflow that runs them. Debug builds no
   longer use the hardened runtime, so the tests can load into the app.
+- The DMG is built with `diskutil image create` instead of the deprecated
+  `hdiutil create`.
 
 ### Fixed
 - Clearing a desktop image now puts the macOS default wallpaper on that

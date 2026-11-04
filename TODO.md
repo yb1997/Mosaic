@@ -43,10 +43,9 @@ _All done for now._
 
 ## Housekeeping
 
-- [ ] `scripts/build-dmg.sh` uses `hdiutil create`, which macOS reports as
-  deprecated; move to `diskutil image create` when convenient.
-- [ ] Old DMGs and zips in the project folder (1.0.0, 1.1.0 and WallpaperChanger
-  builds, ~10 MB) are git-ignored and can be deleted.
+- [ ] The updater (`UpdateInstaller`) mounts DMGs with `hdiutil attach` /
+  `detach`, which macOS reports as deprecated (`diskutil image attach`). Still
+  works on macOS 27.
 
 ## Decided, not doing
 
