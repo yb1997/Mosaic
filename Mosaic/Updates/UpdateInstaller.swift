@@ -144,12 +144,29 @@ final class UpdateInstaller {
 
     // MARK: - Mount
 
-    /// Mounts the DMG read-only, hidden from Finder, at a random point under `workDir`.
-    private nonisolated static func attach(_ dmg: URL, under workDir: URL) throws -> URL {
+    /// Mounts the DMG read-only, hidden from Finder, under `workDir`. Uses
+    /// `diskutil image attach` (macOS 26+); falls back to the deprecated
+    /// `hdiutil attach` so an update can still install if that fails.
+    nonisolated static func attach(_ dmg: URL, under workDir: URL) throws -> URL {
+        let mountPoint = workDir.appendingPathComponent("mount-\(UUID().uuidString)", isDirectory: true)
+        do {
+            let output = try run("/usr/sbin/diskutil", [
+                "image", "attach", "--plist", "--readOnly", "--nobrowse",
+                "--mountPoint", mountPoint.path, dmg.path,
+            ])
+            return try parseMountPoint(output)
+        } catch {
+            Log.updater.error("diskutil image attach failed, trying hdiutil: \(String(describing: error), privacy: .public)")
+        }
         let output = try run("/usr/bin/hdiutil", [
             "attach", "-nobrowse", "-readonly", "-noautoopen", "-plist",
             "-mountrandom", workDir.path, dmg.path,
         ])
+        return try parseMountPoint(output)
+    }
+
+    /// Both tools print a plist with the mount point in `system-entities`.
+    private nonisolated static func parseMountPoint(_ output: Data) throws -> URL {
         guard let plist = try? PropertyListSerialization.propertyList(from: output, format: nil) as? [String: Any],
               let entities = plist["system-entities"] as? [[String: Any]],
               let path = entities.compactMap({ $0["mount-point"] as? String }).first
@@ -159,7 +176,8 @@ final class UpdateInstaller {
         return URL(fileURLWithPath: path, isDirectory: true)
     }
 
-    private nonisolated static func detach(_ mountPoint: URL) {
+    nonisolated static func detach(_ mountPoint: URL) {
+        if (try? run("/usr/sbin/diskutil", ["eject", mountPoint.path])) != nil { return }
         if (try? run("/usr/bin/hdiutil", ["detach", mountPoint.path, "-quiet"])) == nil {
             _ = try? run("/usr/bin/hdiutil", ["detach", mountPoint.path, "-force", "-quiet"])
         }

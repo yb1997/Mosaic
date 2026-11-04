@@ -11,6 +11,11 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+- The updater mounts and ejects the downloaded DMG with `diskutil image
+  attach` / `diskutil eject` instead of the deprecated `hdiutil`, which stays
+  as a fallback.
+
 ## [1.3.0] - 2026-11-04
 
 ### Changed

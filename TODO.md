@@ -39,9 +39,7 @@ _All done for now._
 
 ## Housekeeping
 
-- [ ] The updater (`UpdateInstaller`) mounts DMGs with `hdiutil attach` /
-  `detach`, which macOS reports as deprecated (`diskutil image attach`). Still
-  works on macOS 27.
+_All done for now._
 
 ## Decided, not doing
 
