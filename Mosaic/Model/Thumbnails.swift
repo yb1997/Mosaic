@@ -8,7 +8,14 @@ final class Thumbnails {
     static let shared = Thumbnails()
     private let cache = NSCache<NSString, NSImage>()
     /// Decodes already running, so tiles showing the same image share one.
-    private var inFlight: [String: Task<NSImage?, Never>] = [:]
+    private var inFlight: [String: Task<(NSImage, CGSize)?, Never>] = [:]
+    /// Full-size pixel dimensions, for previewing Center scaling.
+    private var pixelSizes: [String: CGSize] = [:]
+
+    /// The original image's size in pixels, once its preview is decoded.
+    func pixelSize(for url: URL) -> CGSize? {
+        pixelSizes[url.lastPathComponent]
+    }
 
     /// The preview if it's already decoded, without waiting.
     func cached(for url: URL) -> NSImage? {
@@ -18,15 +25,15 @@ final class Thumbnails {
     func image(for url: URL, maxPixels: Int = 480) async -> NSImage? {
         let key = url.lastPathComponent
         if let cached = cache.object(forKey: key as NSString) { return cached }
-        if let running = inFlight[key] { return await running.value }
+        if let running = inFlight[key] { return await running.value?.0 }
         let task = Task.detached(priority: .userInitiated) { Self.decode(url, maxPixels: maxPixels) }
         inFlight[key] = task
-        let image = await task.value
+        let decoded = await task.value
         inFlight[key] = nil
-        if let image {
-            cache.setObject(image, forKey: key as NSString)
-            cachedNames.insert(key)
-        }
+        guard let (image, size) = decoded else { return nil }
+        cache.setObject(image, forKey: key as NSString)
+        cachedNames.insert(key)
+        pixelSizes[key] = size
         return image
     }
 
@@ -37,12 +44,13 @@ final class Thumbnails {
             cache.removeObject(forKey: name as NSString)
         }
         cachedNames.formIntersection(names)
+        pixelSizes = pixelSizes.filter { names.contains($0.key) }
     }
 
     /// NSCache can't list its keys.
     private var cachedNames: Set<String> = []
 
-    private nonisolated static func decode(_ url: URL, maxPixels: Int) -> NSImage? {
+    private nonisolated static func decode(_ url: URL, maxPixels: Int) -> (NSImage, CGSize)? {
         let options: [CFString: Any] = [
             kCGImageSourceCreateThumbnailFromImageAlways: true,
             kCGImageSourceCreateThumbnailWithTransform: true,
@@ -52,6 +60,12 @@ final class Thumbnails {
         guard let source = CGImageSourceCreateWithURL(url as CFURL, [kCGImageSourceShouldCache: false] as CFDictionary),
               let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
         else { return nil }
-        return NSImage(cgImage: cgImage, size: .zero)
+        // The thumbnail keeps the aspect ratio, and the orientation transform.
+        let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
+        let width = properties?[kCGImagePropertyPixelWidth] as? Int ?? cgImage.width
+        let height = properties?[kCGImagePropertyPixelHeight] as? Int ?? cgImage.height
+        let rotated = (properties?[kCGImagePropertyOrientation] as? Int ?? 1) >= 5
+        let size = rotated ? CGSize(width: height, height: width) : CGSize(width: width, height: height)
+        return (NSImage(cgImage: cgImage, size: .zero), size)
     }
 }

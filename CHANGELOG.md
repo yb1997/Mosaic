@@ -11,6 +11,42 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- Video wallpapers. A desktop tile takes a video (`.mov`, `.mp4`, `.m4v`) as
+  well as an image, picked or dropped; it plays muted on a loop under the
+  desktop icons and widgets, on every Space. Its tile shows a still frame
+  with a play badge and the length. Videos pause while hidden (under a
+  full-screen app), while the Mac is locked or asleep, and in Low Power Mode;
+  Pause on Battery Power in Settings pauses them on battery too, and Pause
+  Videos in the panel pauses them all. The lock screen can't play video, so
+  it shows a still from the video, and a lock screen tile only takes images.
+- Videos are stored small: only the video track is kept (no audio or
+  subtitles), re-encoded to HEVC at the chosen frame rate (24, 30 or 60 fps,
+  or the original) and quality (Smaller, Balanced, High, or Original to keep
+  the source's track as it is), and no larger than the screens need. The
+  default is 30 fps, Balanced, set in Settings; each screen can use other
+  settings from Video in its tile's right-click menu. Mosaic remembers where
+  the original file is, so a setting can be raised later while it's there.
+  A long video is tried on a 10-second sample first, so one that wouldn't
+  get smaller (such as a slide video) isn't re-encoded in full for nothing.
+  While a video converts, its tile shows the progress and × stops it.
+  Settings shows how much space wallpapers use.
+- Scaling for each desktop and lock screen image: Fill Screen (the default,
+  as before), Fit to Screen, Stretch to Fill, or Center, from the Scaling
+  item in the tile's right-click menu. Fit and Center show black bars;
+  Center shows the image at actual size, shrunk only when it is bigger than
+  the screen both ways, as macOS does. The
+  tile preview shows the chosen scaling. A slot keeps its scaling when its
+  image changes; Use on All Screens, Copy to and Swap take it along, and
+  profiles save it.
+- Wallpaper changes made in Mosaic fade in over half a second instead of
+  switching instantly. Turn it off with Fade Between Wallpapers in Settings.
+  A Space that still shows the old wallpaper when you switch to it fades to
+  the new one instead of snapping (macOS only lets apps change the current
+  Space, so it can't be updated before you get there). Waking, locking and
+  unlocking stay instant, and so does replacing a wallpaper Mosaic didn't set
+  (such as an aerial or a Photos picture), since it can't be redrawn.
+
 ## [1.4.0] - 2026-11-04
 
 ### Added

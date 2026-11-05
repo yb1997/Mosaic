@@ -100,7 +100,8 @@ enum StatusItemDropTarget {
     private final class DropView: NSView {
         override init(frame: NSRect) {
             super.init(frame: frame)
-            registerForDraggedTypes([.fileURL] + NSImage.imageTypes.map { NSPasteboard.PasteboardType($0) })
+            registerForDraggedTypes([.fileURL] + NSImage.imageTypes.map { NSPasteboard.PasteboardType($0) }
+                + [UTType.movie, .quickTimeMovie, .mpeg4Movie].map { NSPasteboard.PasteboardType($0.identifier) })
         }
 
         required init?(coder: NSCoder) { fatalError() }
@@ -121,9 +122,14 @@ enum StatusItemDropTarget {
             let pasteboard = info.draggingPasteboard
             if let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL],
                !urls.isEmpty {
-                return urls.contains { UTType(filenameExtension: $0.pathExtension)?.conforms(to: .image) == true }
+                return urls.contains {
+                    UTType(filenameExtension: $0.pathExtension)?.conforms(to: .image) == true || VideoFile.isVideoSource($0)
+                }
             }
-            return pasteboard.types?.contains { UTType($0.rawValue)?.conforms(to: .image) == true } == true
+            return pasteboard.types?.contains {
+                guard let type = UTType($0.rawValue) else { return false }
+                return type.conforms(to: .image) || type.conforms(to: .movie)
+            } == true
         }
     }
 }

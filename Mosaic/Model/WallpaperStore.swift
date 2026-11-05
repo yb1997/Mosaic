@@ -16,9 +16,17 @@ struct ScreenWallpapers: Codable, Equatable {
     /// Show the desktop image on the lock screen. The lock image is kept so
     /// turning this off brings it back.
     var lockSameAsDesktop = false
+    /// How each slot's image is fitted to the screen. Kept with the slot, not
+    /// the image, so a new image keeps the slot's choice.
+    var desktopScaling = Scaling.fill
+    var lockScaling = Scaling.fill
 
     /// The lock image actually in use.
     var effectiveLock: String? { lockSameAsDesktop ? nil : lock }
+
+    /// The scaling of the image the lock screen shows, which is the desktop's
+    /// when it has no image of its own.
+    var effectiveLockScaling: Scaling { effectiveLock == nil ? desktopScaling : lockScaling }
 
     init() {}
 
@@ -27,6 +35,17 @@ struct ScreenWallpapers: Codable, Equatable {
         desktop = try container.decodeIfPresent(String.self, forKey: .desktop)
         lock = try container.decodeIfPresent(String.self, forKey: .lock)
         lockSameAsDesktop = try container.decodeIfPresent(Bool.self, forKey: .lockSameAsDesktop) ?? false
+        // An unknown value (from a newer version) falls back to the default.
+        desktopScaling = (try? container.decodeIfPresent(Scaling.self, forKey: .desktopScaling)) ?? .fill
+        lockScaling = (try? container.decodeIfPresent(Scaling.self, forKey: .lockScaling)) ?? .fill
+    }
+
+    func scaling(_ slot: Slot) -> Scaling {
+        slot == .desktop ? desktopScaling : lockScaling
+    }
+
+    mutating func setScaling(_ scaling: Scaling, for slot: Slot) {
+        if slot == .desktop { desktopScaling = scaling } else { lockScaling = scaling }
     }
 
     subscript(slot: Slot) -> String? {
@@ -85,8 +104,23 @@ final class WallpaperStore {
         let slot: Slot
     }
 
+    /// How far each video being converted has got (0–1).
+    private var videoProgress: [ImportKey: Double] = [:]
+    /// Running video conversions, so they can be cancelled. The ID tells a
+    /// late progress update from an old conversion apart from the current one.
+    @ObservationIgnored private var videoTasks: [ImportKey: (id: UUID, task: Task<Void, Never>)] = [:]
+    /// Files each running conversion writes or reuses, kept from cleanup until it ends.
+    @ObservationIgnored private var videoReservations: [UUID: Set<String>] = [:]
+
+    /// Every video wallpaper is paused, from the panel. Not saved.
+    var videosPaused = false {
+        didSet { if videosPaused != oldValue { onPlaybackChange() } }
+    }
+
     /// Called after any change so the engine can re-apply wallpapers.
     @ObservationIgnored var onChange: () -> Void = {}
+    /// Called when videos are paused or resumed from the panel.
+    @ObservationIgnored var onPlaybackChange: () -> Void = {}
     /// Called with a display's ID just before its desktop image is cleared,
     /// so the engine can show the macOS default there instead.
     @ObservationIgnored var onDesktopCleared: (String) -> Void = { _ in }
@@ -154,6 +188,18 @@ final class WallpaperStore {
         fileName.map { imagesDirectory.appendingPathComponent($0) }
     }
 
+    /// The picture for a slot's file: the image itself, or a video's still
+    /// frame (what the system wallpaper, the lock screen and the tile show).
+    func pictureURL(_ fileName: String?) -> URL? {
+        guard let fileName else { return nil }
+        return imageURL(VideoFile(fileName: fileName)?.stillName ?? fileName)
+    }
+
+    /// Whether any connected screen's desktop is a video.
+    var hasVideos: Bool {
+        displays.contains { VideoFile.isVideo(wallpapers(for: $0).desktop) }
+    }
+
     func refreshDisplays() {
         displays = Display.connected
     }
@@ -178,6 +224,195 @@ final class WallpaperStore {
             }.value
             finishImport(destination, error: error, sourceName: source.lastPathComponent, slot: slot, displayID: displayID)
         }
+    }
+
+    /// Uses a picked or dropped file: a video goes through `setVideo`, anything else is copied as an image.
+    func setMedia(from source: URL, slot: Slot, display: Display) {
+        if VideoFile.isVideoSource(source) {
+            setVideo(from: source, slot: slot, display: display)
+        } else {
+            setImage(from: source, slot: slot, display: display)
+        }
+    }
+
+    // MARK: Videos
+
+    /// How far a slot's video conversion has got (0–1), or nil when none is running.
+    func videoProgress(_ slot: Slot, display: Display) -> Double? {
+        videoProgress[ImportKey(display: display.id, slot: slot)]
+    }
+
+    /// Converts a video for a screen's desktop at the default settings and
+    /// uses it. The lock screen can't play video, so it refuses one.
+    /// `isTemporary`: the source is a copy made for this (say, of a video
+    /// dragged from Photos), so no link to it is kept and it's deleted afterwards.
+    func setVideo(from source: URL, slot: Slot, display: Display, isTemporary: Bool = false) {
+        guard slot == .desktop else {
+            lastError = "The lock screen can only show images."
+            return
+        }
+        let replaced = wallpapers(for: display).desktop != nil
+        convertVideo(from: source, format: VideoFormat.default(in: defaults), displayID: display.id,
+                     linksOriginal: !isTemporary, deletesSource: isTemporary, sourceName: source.lastPathComponent,
+                     undo: replaced ? "Replaced the desktop \(mediaWord(wallpapers(for: display).desktop)) on \(display.name)" : nil)
+    }
+
+    /// The settings a screen's desktop video is stored at, or nil when it isn't a video.
+    func videoFormat(on display: Display) -> VideoFormat? {
+        wallpapers(for: display).desktop.flatMap(VideoFile.init(fileName:))?.format
+    }
+
+    /// Whether a screen's video can be stored at `format`: it needs no more
+    /// than the stored copy kept, or the original file can still be found.
+    func canUse(_ format: VideoFormat, on display: Display) -> Bool {
+        guard let current = wallpapers(for: display).desktop.flatMap(VideoFile.init(fileName:)) else { return false }
+        return format.isAtMost(current.format) || originalURL(of: current) != nil
+    }
+
+    /// Stores a screen's desktop video again at other settings: from the
+    /// original file when it can still be found, otherwise from the stored
+    /// copy, which only works for settings no higher than it has.
+    func setVideoFormat(_ format: VideoFormat, display: Display) {
+        guard let name = wallpapers(for: display).desktop, let current = VideoFile(fileName: name),
+              current.format != format, let stored = imageURL(name)
+        else { return }
+        let fallback = format.isAtMost(current.format) ? stored : nil
+        let undo = "Changed the desktop video on \(display.name) to \(format.title)"
+        if let original = originalURL(of: current) {
+            convertVideo(from: original, expectedHash: current.sourceHash, fallback: fallback, format: format,
+                         displayID: display.id, linksOriginal: true, sourceName: original.lastPathComponent, undo: undo)
+        } else if let fallback {
+            convertVideo(from: fallback, knownHash: current.sourceHash, format: format, displayID: display.id,
+                         linksOriginal: false, sourceName: name, undo: undo)
+        } else {
+            lastError = Self.originalMissing
+        }
+    }
+
+    private static let originalMissing = "The original video can't be found. Choose the video again to use a higher setting."
+
+    /// Stops a slot's video conversion; the slot keeps what it had.
+    func cancelVideoConversion(_ slot: Slot, display: Display) {
+        videoTasks[ImportKey(display: display.id, slot: slot)]?.task.cancel()
+    }
+
+    /// The original file a stored video was made from, if it's still there.
+    private func originalURL(of video: VideoFile) -> URL? {
+        guard let data = try? Data(contentsOf: imagesDirectory.appendingPathComponent(video.originalName)) else { return nil }
+        var isStale = false
+        guard let url = try? URL(resolvingBookmarkData: data, options: [.withoutUI, .withoutMounting],
+                                 relativeTo: nil, bookmarkDataIsStale: &isStale),
+              FileManager.default.fileExists(atPath: url.path)
+        else { return nil }
+        return url
+    }
+
+    /// The longest side a stored video needs: the largest connected screen's,
+    /// and at least 4K so a bigger screen plugged in later still looks sharp.
+    private var videoLongSide: Int {
+        let screens = displays.map { display in
+            let frame = display.screen.frame
+            return Int(max(frame.width, frame.height) * display.screen.backingScaleFactor)
+        }
+        return max(VideoEncoder.minimumLongSide, screens.max() ?? 0)
+    }
+
+    private func mediaWord(_ fileName: String?) -> String {
+        VideoFile.isVideo(fileName) ? "video" : "image"
+    }
+
+    /// Converts `source` in the background (see VideoEncoder), saves its still
+    /// frame and a bookmark to the original, then puts it on the screen's
+    /// desktop. A video already stored at these settings is reused.
+    /// `expectedHash`: the source must still be this file; if it isn't,
+    /// `fallback` (the stored copy) is used instead, when there is one.
+    private func convertVideo(from source: URL, knownHash: String? = nil, expectedHash: String? = nil, fallback: URL? = nil,
+                              format: VideoFormat, displayID: String, linksOriginal: Bool, deletesSource: Bool = false,
+                              sourceName: String, undo: String?) {
+        let key = ImportKey(display: displayID, slot: .desktop)
+        videoTasks[key]?.task.cancel()
+        let id = UUID()
+        let temporary = "\(id.uuidString).mov"
+        importing.insert(key)
+        videoProgress[key] = 0
+        videoReservations[id] = [temporary]
+        let directory = imagesDirectory
+        let longSide = videoLongSide
+
+        let task = Task { [weak self] in
+            var input = source
+            var links = linksOriginal
+            do {
+                var hash: String
+                if let knownHash {
+                    hash = knownHash
+                } else {
+                    hash = try await Task.detached(priority: .userInitiated) { try Self.sha256(of: source) }.value
+                }
+                if let expectedHash, hash != expectedHash {
+                    guard let fallback else { throw VideoEncoder.Failure(message: Self.originalMissing) }
+                    input = fallback
+                    hash = expectedHash
+                    links = false
+                }
+                try Task.checkCancellation()
+                let file = VideoFile(sourceHash: hash, format: format)
+                self?.videoReservations[id, default: []].formUnion([file.fileName, file.stillName, file.originalName])
+                let video = directory.appendingPathComponent(file.fileName)
+                let still = directory.appendingPathComponent(file.stillName)
+                let fileManager = FileManager.default
+                if !fileManager.fileExists(atPath: video.path) {
+                    let converted = directory.appendingPathComponent(temporary)
+                    try await VideoEncoder.encode(input, to: converted, format: format, maxLongSide: longSide) { done in
+                        Task { @MainActor in self?.reportProgress(done, key: key, id: id) }
+                    }
+                    try Task.checkCancellation()
+                    if fileManager.fileExists(atPath: video.path) {
+                        try? fileManager.removeItem(at: converted)
+                    } else {
+                        try fileManager.moveItem(at: converted, to: video)
+                    }
+                }
+                if !fileManager.fileExists(atPath: still.path) {
+                    try await VideoEncoder.writeStill(of: video, to: still)
+                }
+                if links, let bookmark = try? source.bookmarkData() {
+                    try? bookmark.write(to: directory.appendingPathComponent(file.originalName), options: .atomic)
+                }
+                try Task.checkCancellation()
+                self?.finishVideo(file.fileName, key: key, id: id, undo: undo)
+            } catch {
+                try? FileManager.default.removeItem(at: directory.appendingPathComponent(temporary))
+                self?.finishVideo(nil, key: key, id: id, undo: nil)
+                if !(error is CancellationError) { self?.importFailed(sourceName, error) }
+            }
+            if deletesSource { try? FileManager.default.removeItem(at: source) }
+        }
+        videoTasks[key] = (id, task)
+    }
+
+    private func reportProgress(_ done: Double, key: ImportKey, id: UUID) {
+        guard videoTasks[key]?.id == id else { return }
+        videoProgress[key] = done
+    }
+
+    /// Ends a conversion: puts the video on its screen, or just tidies up when
+    /// `fileName` is nil (it failed or was cancelled).
+    private func finishVideo(_ fileName: String?, key: ImportKey, id: UUID, undo: String?) {
+        // A newer conversion for this slot took over; it owns the slot's state.
+        let isCurrent = videoTasks[key]?.id == id
+        if isCurrent {
+            videoTasks[key] = nil
+            videoProgress[key] = nil
+            importing.remove(key)
+        }
+        videoReservations[id] = nil
+        guard isCurrent, let fileName, let display = displays.first(where: { $0.id == key.display }) else {
+            removeUnusedImages()
+            return
+        }
+        lastError = nil
+        update(display, undo: undo) { $0.desktop = fileName }
     }
 
     /// Starts copying an image into a slot: shows the slot as busy and
@@ -276,8 +511,11 @@ final class WallpaperStore {
     }
 
     func clear(_ slot: Slot, display: Display) {
+        cancelVideoConversion(slot, display: display)
+        let current = wallpapers(for: display)[slot]
+        guard current != nil else { return }
         if slot == .desktop { onDesktopCleared(display.id) }
-        update(display, undo: "Cleared the \(slot.title.lowercased()) image on \(display.name)") { $0[slot] = nil }
+        update(display, undo: "Cleared the \(slot.title.lowercased()) \(mediaWord(current)) on \(display.name)") { $0[slot] = nil }
     }
 
     /// Puts back the images from before the last change that offered Undo.
@@ -324,24 +562,33 @@ final class WallpaperStore {
 
     private func copy(_ slot: Slot, from display: Display, to targets: [Display], undo: String) {
         guard let file = image(slot, on: display), !targets.isEmpty else { return }
+        let scaling = wallpapers(for: display).scaling(slot)
         update(targets, undo: undo) { _, entry in
             entry[slot] = file
+            entry.setScaling(scaling, for: slot)
             // Asking for this lock image means showing it, not the desktop.
             if slot == .lock { entry.lockSameAsDesktop = false }
         }
+    }
+
+    func setScaling(_ scaling: Scaling, _ slot: Slot, display: Display) {
+        guard wallpapers(for: display).scaling(slot) != scaling else { return }
+        update(display) { $0.setScaling(scaling, for: slot) }
     }
 
     /// Whether the screen has two different images to swap.
     func canSwap(on display: Display) -> Bool {
         let entry = wallpapers(for: display)
         guard !entry.lockSameAsDesktop, let desktop = entry.desktop, let lock = entry.lock else { return false }
-        return desktop != lock
+        // The lock screen can't play a video.
+        return desktop != lock && !VideoFile.isVideo(desktop)
     }
 
     func swapDesktopAndLock(on display: Display) {
         guard canSwap(on: display) else { return }
         update(display, undo: "Swapped the desktop and lock screen images on \(display.name)") { entry in
             swap(&entry.desktop, &entry.lock)
+            swap(&entry.desktopScaling, &entry.lockScaling)
         }
     }
 
@@ -436,12 +683,27 @@ final class WallpaperStore {
         }
     }
 
+    /// The space every stored image and video takes, in bytes.
+    func storageUsed() async -> Int64 {
+        let directory = imagesDirectory
+        return await Task.detached(priority: .utility) {
+            let names = (try? FileManager.default.contentsOfDirectory(atPath: directory.path)) ?? []
+            return names.reduce(Int64(0)) { total, name in
+                let size = try? directory.appendingPathComponent(name).resourceValues(forKeys: [.totalFileAllocatedSizeKey])
+                return total + Int64(size?.totalFileAllocatedSize ?? 0)
+            }
+        }.value
+    }
+
     /// Deletes images that neither the current choices, any profile, a pending
     /// undo, nor a copy still in progress use.
     private func removeUnusedImages() {
         let all = [screens] + profiles.map(\.screens)
         let entries = all.flatMap(\.values) + (undoable?.previous.values.map { $0 } ?? [])
-        let used = Set(entries.flatMap { [$0.desktop, $0.lock] }.compactMap { $0 }).union(reservedImages)
+        let named = Set(entries.flatMap { [$0.desktop, $0.lock] }.compactMap { $0 })
+        // A video also needs its still frame and the bookmark to its original.
+        let videoFiles = named.compactMap(VideoFile.init(fileName:)).flatMap { [$0.stillName, $0.originalName] }
+        let used = named.union(videoFiles).union(reservedImages).union(videoReservations.values.joined())
         let files = (try? FileManager.default.contentsOfDirectory(atPath: imagesDirectory.path)) ?? []
         for file in files where !used.contains(file) {
             try? FileManager.default.removeItem(at: imagesDirectory.appendingPathComponent(file))

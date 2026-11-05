@@ -1,7 +1,7 @@
 # To-do
 
-Open items for Mosaic, roughly in priority order. Last updated 2026-11-04,
-after the 1.4.0 release.
+Open items for Mosaic, roughly in priority order. Last updated 2026-11-05,
+after adding scaling.
 
 ## Not yet verified
 
@@ -13,6 +13,15 @@ after the 1.4.0 release.
   error close button, and the duplicate-name note in both name fields.
 - [ ] **Tile context menu.** Store actions are unit-tested; the menu itself
   (items enabled at the right times, Show in Finder) not yet tried by hand.
+
+- [ ] **Fade between wallpapers.** Checked with a harness on the built-in
+  display (2026-11-05): the overlay matches macOS for all four scalings
+  (Center with small, large, wide and tall images), stays under widgets and
+  app windows, and crossfades. Still to see by eye: a fade on an external
+  display with its desktop visible, the fade on arriving at a Space that
+  missed a change (and a Space switch mid-fade), and whether the
+  450 ms wait for WallpaperAgent (`WallpaperFade.agentDelay`) is enough for
+  very large images (6K HEIC).
 
 ## Improvements
 
@@ -26,8 +35,18 @@ _All done for now._
   connected screens and switch when that set reconnects.
 - [ ] **Rotate from a folder.** A slot can point at a folder and change every
   N minutes, on wake, or daily.
-- [ ] **Scaling per image.** Fill / Fit / Center / Stretch; currently always
-  fill-and-crop.
+- [ ] **Video wallpapers.** Built (design in `docs/VIDEO_WALLPAPERS.md`);
+  store, encoder and cleanup are unit-tested, and playback on the LG was
+  checked in the debug build (2026-11-06). Still to try by hand: picking and dropping a
+  video on a tile (and from Photos), the progress ring and × to stop it, the
+  Video submenu (frame rate, quality, Use Default, greyed options once the
+  original is gone), Pause Videos, the Settings section, fades to and from a
+  video. Checked in the app: it pauses at once behind a full-screen app
+  (0 % CPU) and holds no power assertions. Also unchecked: Stage Manager,
+  "click wallpaper to reveal desktop", monitor changes, lock and sleep.
+- [ ] **Video wallpaper follow-ups.** Not built yet: the Still frame submenu
+  (the still is always about 1 s in), playing the video in its tile on hover,
+  and hiding frame rates above the source's.
 - [ ] **Disconnected screens.** Saved entries for screens that aren't
   connected are invisible; list them in Settings so they can be cleared.
 

@@ -40,4 +40,18 @@ struct DecodingTests {
         #expect(profiles[0].name == "Work")
         #expect(profiles[0].screens["D1"]?.desktop == "a.png")
     }
+
+    @Test func screenWithoutScalingFills() throws {
+        let json = #"{"desktop": "a.png", "lock": "b.png"}"#
+        let screen = try JSONDecoder().decode(ScreenWallpapers.self, from: Data(json.utf8))
+        #expect(screen.desktopScaling == .fill)
+        #expect(screen.lockScaling == .fill)
+    }
+
+    @Test func unknownScalingFallsBackToFill() throws {
+        let json = #"{"desktop": "a.png", "desktopScaling": "tile", "lockScaling": "fit"}"#
+        let screen = try JSONDecoder().decode(ScreenWallpapers.self, from: Data(json.utf8))
+        #expect(screen.desktopScaling == .fill)
+        #expect(screen.lockScaling == .fit)
+    }
 }

@@ -327,4 +327,59 @@ struct StoreDisplayTests {
         store.clear(.desktop, display: display)
         #expect(cleared == [display.id])
     }
+
+    // MARK: Scaling
+
+    @Test func scalingIsSavedAndReloaded() throws {
+        let sandbox = Sandbox()
+        try sandbox.addImage("a.png")
+        try sandbox.writeState(#"{"D1": {"desktop": "a.png"}}"#)
+        let (one, _, _) = twoDisplays()
+        let store = sandbox.store(displays: [one])
+        var changes = 0
+        store.onChange = { changes += 1 }
+
+        store.setScaling(.fit, .desktop, display: one)
+        #expect(store.wallpapers(for: one).desktopScaling == .fit)
+        #expect(store.wallpapers(for: one).lockScaling == .fill)
+        #expect(changes == 1)
+        // Picking the scaling it already has changes nothing.
+        store.setScaling(.fit, .desktop, display: one)
+        #expect(changes == 1)
+
+        let reloaded = sandbox.store(displays: [one])
+        #expect(reloaded.wallpapers(for: one).desktopScaling == .fit)
+    }
+
+    @Test func copyAndSwapCarryTheScaling() throws {
+        let sandbox = Sandbox()
+        for name in ["a.png", "b.png"] { try sandbox.addImage(name) }
+        try sandbox.writeState("""
+            {"D1": {"desktop": "a.png", "lock": "b.png", "desktopScaling": "center", "lockScaling": "stretch"},
+             "D2": {"desktop": "b.png", "desktopScaling": "fit"}}
+            """)
+        let (one, two, three) = twoDisplays()
+        let store = sandbox.store(displays: [one, two, three])
+
+        store.useOnAllScreens(.desktop, from: one)
+        #expect(store.wallpapers(for: two).desktopScaling == .center)
+        #expect(store.wallpapers(for: three).desktopScaling == .center)
+        store.undo()
+        #expect(store.wallpapers(for: two).desktopScaling == .fit)
+
+        store.swapDesktopAndLock(on: one)
+        #expect(store.wallpapers(for: one).desktopScaling == .stretch)
+        #expect(store.wallpapers(for: one).lockScaling == .center)
+    }
+
+    @Test func linkedLockUsesTheDesktopScaling() {
+        var entry = ScreenWallpapers()
+        entry.desktop = "a.png"
+        entry.lock = "b.png"
+        entry.desktopScaling = .fit
+        entry.lockScaling = .center
+        #expect(entry.effectiveLockScaling == .center)
+        entry.lockSameAsDesktop = true
+        #expect(entry.effectiveLockScaling == .fit)
+    }
 }

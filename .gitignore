@@ -6,6 +6,7 @@ Mosaic.xcodeproj/
 xcuserdata/
 Spikes/lockspike
 Spikes/lockswap
+Spikes/videospike
 Spikes/*.png
 *.zip
 Config/Signing.local.xcconfig

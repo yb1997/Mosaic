@@ -90,6 +90,16 @@ struct MenuContent: View {
                     }
                     .help("Settings")
                     Spacer()
+                    if store.hasVideos {
+                        Button {
+                            store.videosPaused.toggle()
+                        } label: {
+                            Label(store.videosPaused ? "Play Videos" : "Pause Videos",
+                                  systemImage: store.videosPaused ? "play.fill" : "pause.fill")
+                        }
+                        .help(store.videosPaused ? "Play the video wallpapers again" : "Pause every video wallpaper")
+                        Spacer()
+                    }
                     Button("Quit") { NSApp.terminate(nil) }
                 }
                 .buttonStyle(.glass)
@@ -147,6 +157,12 @@ struct DisplaySection: View {
                     WallpaperTile(display: display, slot: slot)
                         .frame(width: 136, height: 85)
                 }
+            }
+            if showsLockToggle, VideoFile.isVideo(store.wallpapers(for: display).desktop),
+               store.wallpapers(for: display).effectiveLock == nil {
+                Text("Lock screen shows a still from the video.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
             if showsLockToggle {
                 Toggle(isOn: Binding(

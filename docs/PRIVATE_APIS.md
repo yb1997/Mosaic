@@ -13,7 +13,11 @@ Last verified on macOS 27.2 (2026-11-03).
 ## Public APIs with surprising limits
 - `NSWorkspace.setDesktopImageURL(_:for:options:)` only changes the current
   Space and turns off "Show on all Spaces". The engine re-applies on
-  `activeSpaceDidChangeNotification`.
+  `activeSpaceDidChangeNotification`, which arrives only after the Space has
+  slid in, so a Space that missed a change shows the old picture for a moment
+  and then fades. Writing every Space into `Index.plist` would avoid that, but
+  the agent only reloads it on `killall WallpaperAgent`, which flashes every
+  screen.
 - `NSWorkspace.desktopImageURL(for:)` can't describe Photos or aerial
   wallpapers. In the sandboxed test build, it led to the Golden Gate default
   being set back on unlock. That's why a non-sandboxed `Index.plist` snapshot
