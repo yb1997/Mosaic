@@ -1,7 +1,7 @@
 # To-do
 
-Open items for Mosaic, roughly in priority order. Last updated 2026-11-05,
-after adding scaling.
+Open items for Mosaic, roughly in priority order. Last updated 2026-11-06,
+after releasing 1.5.0 (video wallpapers, scaling, fades).
 
 ## Not yet verified
 
