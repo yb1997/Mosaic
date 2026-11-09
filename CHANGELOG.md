@@ -11,6 +11,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-11-10
+
 ### Added
 - Video on the lock screen. A lock screen tile now takes a video too, and a
   screen whose lock screen has nothing of its own (or is set to the same as
@@ -195,7 +197,8 @@ All notable changes to this project are documented here. The format follows
 - Wallpapers are re-applied after switching Spaces, waking, and screen changes.
   The app does nothing in between.
 
-[Unreleased]: https://github.com/yb1997/Mosaic/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/yb1997/Mosaic/compare/v1.6.0...HEAD
+[1.6.0]: https://github.com/yb1997/Mosaic/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/yb1997/Mosaic/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/yb1997/Mosaic/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/yb1997/Mosaic/compare/v1.2.0...v1.3.0
