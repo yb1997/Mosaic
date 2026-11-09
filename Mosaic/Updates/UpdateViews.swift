@@ -90,7 +90,7 @@ struct UpdateSettingsSection: View {
     var body: some View {
         let status = status
         @Bindable var service = status.service
-        Section("Updates") {
+        Section("Software Update") {
             Toggle("Check for updates automatically", isOn: $service.checksAutomatically)
             LabeledContent {
                 if status.isBusy {

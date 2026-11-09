@@ -100,6 +100,23 @@ struct StoreTests {
         #expect(sandbox.imageFiles == ["current.png", "profile-only.png"])
     }
 
+    /// Not just at launch: later cleanups, and later launches, keep them too.
+    @Test func unreadableProfilesKeepImagesAfterLaterChanges() throws {
+        let sandbox = Sandbox()
+        for name in ["current.png", "profile-only.png"] { try sandbox.addImage(name) }
+        try sandbox.writeState(#"{"D1": {"desktop": "current.png"}}"#)
+        try sandbox.writeProfiles("not json")
+        let store = sandbox.store()
+        store.saveProfile(named: "New")
+        store.delete(try #require(store.profiles.first))
+        #expect(sandbox.imageFiles == ["current.png", "profile-only.png"])
+
+        _ = sandbox.store()
+        #expect(sandbox.imageFiles == ["current.png", "profile-only.png"])
+        let copy = sandbox.folder.appendingPathComponent("profiles.json.unreadable")
+        #expect(try String(contentsOf: copy, encoding: .utf8) == "not json")
+    }
+
     // MARK: Profile names
 
     @Test func duplicateNamesAreRefusedIgnoringCaseAndSpaces() {
@@ -188,6 +205,44 @@ struct StoreDisplayTests {
         #expect(store.lastError != nil)
         store.dismissError()
         #expect(store.lastError == nil)
+    }
+
+    @Test func importFinishingAfterProfileApplyIsDropped() async throws {
+        let sandbox = Sandbox()
+        try sandbox.addImage("profile.png")
+        try sandbox.writeProfiles(#"[{"name": "P", "screens": {"TEST-DISPLAY": {"desktop": "profile.png"}}}]"#)
+        let display = testDisplay()
+        let store = sandbox.store(displays: [display])
+
+        let temporary = store.beginImport(slot: .desktop, displayID: display.id, fileExtension: "png")
+        try Data("copied".utf8).write(to: temporary)
+        store.apply(try #require(store.profiles.first))
+        store.finishImport(temporary, error: nil, sourceName: "x.png", slot: .desktop, displayID: display.id)
+        for _ in 0..<100 where sandbox.imageFiles != ["profile.png"] { try await Task.sleep(for: .milliseconds(20)) }
+
+        #expect(store.wallpapers(for: display).desktop == "profile.png")
+        #expect(sandbox.imageFiles == ["profile.png"])
+        #expect(!store.isImporting(.desktop, display: display))
+    }
+
+    @Test func lastPickedImageWinsWhenCopiesFinishOutOfOrder() async throws {
+        let sandbox = Sandbox()
+        let display = testDisplay()
+        let store = sandbox.store(displays: [display])
+
+        let first = store.beginImport(slot: .desktop, displayID: display.id, fileExtension: "png")
+        let second = store.beginImport(slot: .desktop, displayID: display.id, fileExtension: "png")
+        try Data("first".utf8).write(to: first)
+        try Data("second".utf8).write(to: second)
+        store.finishImport(second, error: nil, sourceName: "b.png", slot: .desktop, displayID: display.id)
+        for _ in 0..<100 where store.isImporting(.desktop, display: display) { try await Task.sleep(for: .milliseconds(20)) }
+        let chosen = store.wallpapers(for: display).desktop
+        store.finishImport(first, error: nil, sourceName: "a.png", slot: .desktop, displayID: display.id)
+        try await Task.sleep(for: .milliseconds(300))
+
+        #expect(chosen != nil)
+        #expect(store.wallpapers(for: display).desktop == chosen)
+        #expect(sandbox.imageFiles == [try #require(chosen)])
     }
 
     @Test func sameImageIsStoredOnce() async throws {

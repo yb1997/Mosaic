@@ -66,10 +66,7 @@ final class UpdateService {
         guard !isChecking else { return }
         isChecking = true
         lastCheckFailed = false
-        defer {
-            isChecking = false
-            lastCheckDate = Date()
-        }
+        defer { isChecking = false }
 
         guard let url = URL(string: "https://api.github.com/repos/\(repoOwner)/\(repoName)/releases/latest") else { return }
         var request = URLRequest(url: url)
@@ -95,6 +92,8 @@ final class UpdateService {
                 .flatMap { $0["browser_download_url"] as? String }
                 .flatMap(URL.init(string:))
             hasUpdate = Self.isNewerVersion(version, than: currentVersion)
+            // Only a check that worked counts, so a failed one is tried again at the next wake or launch.
+            lastCheckDate = Date()
         } catch {
             Log.updater.error("Update check failed: \(String(describing: error), privacy: .public)")
             lastCheckFailed = true

@@ -281,6 +281,11 @@ private final class Pump: @unchecked Sendable {
                 return continuation.resume(throwing: CancellationError())
             }
             guard input.isReadyForMoreMediaData else {
+                // A failed writer (say, a full disk) is never ready again.
+                if writer.status == .failed {
+                    reader.cancelReading()
+                    return continuation.resume(throwing: writer.error ?? VideoEncoder.Failure(message: "The video can't be saved."))
+                }
                 usleep(2_000)
                 continue
             }

@@ -108,7 +108,9 @@ final class VideoWallpapers {
     }
 }
 
-/// One screen's video window.
+/// One screen's video window. It can also show a still picture: a screen
+/// whose lock screen plays a video has that video's aerial as its system
+/// wallpaper, so its desktop picture is drawn here (LockScreenVideos).
 @MainActor
 private final class VideoScreen: NSObject, NSWindowDelegate {
     let url: URL
@@ -117,18 +119,36 @@ private final class VideoScreen: NSObject, NSWindowDelegate {
     private let window: NSWindow
     private let player = AVQueuePlayer()
     private var looper: AVPlayerLooper?
-    private let playerLayer: AVPlayerLayer
+    /// The video's layer, or the picture's.
+    private let contentLayer: CALayer
+    private let isPicture: Bool
     private var isAllowed = true
-    /// The video's upright size in pixels, read from its still frame, for Center.
+    /// The video's upright size in pixels, read from its still frame, or
+    /// the picture's, for Center.
     private let videoPixels: CGSize?
+    /// Whether the picture holds every pixel. Only Center needs that; the
+    /// others never show more than the screen has, so it's decoded smaller
+    /// (a 6K picture is about 80 MB in memory) and in full if Center is chosen later.
+    private var pictureIsFullSize = false
 
     init(url: URL, screen: NSScreen, scaling: Scaling) {
         self.url = url
         self.scaling = scaling
         frame = screen.frame
         window = NSWindow(contentRect: screen.frame, styleMask: .borderless, backing: .buffered, defer: false)
-        playerLayer = AVPlayerLayer(player: player)
-        videoPixels = Self.pixelSize(ofStillFor: url)
+        isPicture = !VideoFile.isVideo(url.lastPathComponent)
+        if isPicture {
+            let picture = CALayer()
+            let screenLongSide = Int((max(screen.frame.width, screen.frame.height) * screen.backingScaleFactor).rounded(.up))
+            let decoded = Self.image(at: url, maxPixels: scaling == .center ? nil : screenLongSide)
+            picture.contents = decoded?.image
+            contentLayer = picture
+            videoPixels = decoded?.fullSize
+            pictureIsFullSize = scaling == .center
+        } else {
+            contentLayer = AVPlayerLayer(player: player)
+            videoPixels = Self.pixelSize(ofStillFor: url)
+        }
         super.init()
 
         // Above the desktop picture, below the desktop icons and widgets.
@@ -147,18 +167,24 @@ private final class VideoScreen: NSObject, NSWindowDelegate {
         view.wantsLayer = true
         view.layer?.backgroundColor = Scaling.fillColor.cgColor
         view.layer?.masksToBounds = true
-        view.layer?.addSublayer(playerLayer)
+        view.layer?.addSublayer(contentLayer)
         window.contentView = view
 
-        player.isMuted = true
-        // Defaults to true on macOS, which would keep the display awake forever.
-        player.preventsDisplaySleepDuringVideoPlayback = false
-        looper = AVPlayerLooper(player: player, templateItem: AVPlayerItem(url: url))
+        if !isPicture {
+            player.isMuted = true
+            // Defaults to true on macOS, which would keep the display awake forever.
+            player.preventsDisplaySleepDuringVideoPlayback = false
+            looper = AVPlayerLooper(player: player, templateItem: AVPlayerItem(url: url))
+        }
         place(on: screen, scaling: scaling)
     }
 
     func place(on screen: NSScreen, scaling: Scaling) {
         self.scaling = scaling
+        if isPicture, scaling == .center, !pictureIsFullSize, let decoded = Self.image(at: url, maxPixels: nil) {
+            contentLayer.contents = decoded.image
+            pictureIsFullSize = true
+        }
         frame = screen.frame
         window.setFrame(screen.frame, display: false)
         let bounds = CGRect(origin: .zero, size: screen.frame.size)
@@ -166,26 +192,26 @@ private final class VideoScreen: NSObject, NSWindowDelegate {
         CATransaction.setDisableActions(true)
         switch scaling {
         case .fill:
-            playerLayer.videoGravity = .resizeAspectFill
-            playerLayer.frame = bounds
+            setGravity(.resizeAspectFill, .resizeAspectFill)
+            contentLayer.frame = bounds
         case .fit:
-            playerLayer.videoGravity = .resizeAspect
-            playerLayer.frame = bounds
+            setGravity(.resizeAspect, .resizeAspect)
+            contentLayer.frame = bounds
         case .stretch:
-            playerLayer.videoGravity = .resize
-            playerLayer.frame = bounds
+            setGravity(.resize, .resize)
+            contentLayer.frame = bounds
         case .center:
             // Actual size, as macOS shows a centred picture.
-            playerLayer.videoGravity = .resizeAspect
+            setGravity(.resizeAspect, .resizeAspect)
             if let pixels = videoPixels {
                 let scale = screen.backingScaleFactor
                 let screenPixels = CGSize(width: bounds.width * scale, height: bounds.height * scale)
                 let shrink = Scaling.centerScale(image: pixels, screen: screenPixels)
                 let size = CGSize(width: pixels.width * shrink / scale, height: pixels.height * shrink / scale)
-                playerLayer.frame = CGRect(x: (bounds.width - size.width) / 2, y: (bounds.height - size.height) / 2,
-                                           width: size.width, height: size.height)
+                contentLayer.frame = CGRect(x: (bounds.width - size.width) / 2, y: (bounds.height - size.height) / 2,
+                                            width: size.width, height: size.height)
             } else {
-                playerLayer.frame = bounds
+                contentLayer.frame = bounds
             }
         }
         CATransaction.commit()
@@ -206,7 +232,7 @@ private final class VideoScreen: NSObject, NSWindowDelegate {
         // Fading in before the first frame is drawn would dim the screen to black.
         Task { [weak self] in
             for _ in 0..<50 {
-                guard let self, !self.playerLayer.isReadyForDisplay else { break }
+                guard let self, let video = self.contentLayer as? AVPlayerLayer, !video.isReadyForDisplay else { break }
                 try? await Task.sleep(for: .milliseconds(20))
             }
             self?.animate(to: 1, completion: completion)
@@ -229,6 +255,7 @@ private final class VideoScreen: NSObject, NSWindowDelegate {
 
     func updatePlayback(allowed: Bool) {
         isAllowed = allowed
+        guard !isPicture else { return }
         let visible = window.occlusionState.contains(.visible) || !window.isVisible
         let plays = allowed && visible
         guard plays != (player.rate != 0) else { return }
@@ -250,6 +277,33 @@ private final class VideoScreen: NSObject, NSWindowDelegate {
 
     nonisolated func windowDidChangeOcclusionState(_ notification: Notification) {
         MainActor.assumeIsolated { updatePlayback(allowed: isAllowed) }
+    }
+
+    private func setGravity(_ video: AVLayerVideoGravity, _ picture: CALayerContentsGravity) {
+        if let layer = contentLayer as? AVPlayerLayer {
+            layer.videoGravity = video
+        } else {
+            contentLayer.contentsGravity = picture
+        }
+    }
+
+    /// The picture, upright, for the window, and its full size in pixels.
+    /// `maxPixels` limits the longer side (nil: every pixel).
+    private static func image(at url: URL, maxPixels: Int?) -> (image: CGImage, fullSize: CGSize)? {
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, [kCGImageSourceShouldCache: false] as CFDictionary) else { return nil }
+        let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
+        let width = properties?[kCGImagePropertyPixelWidth] as? Int ?? 0
+        let height = properties?[kCGImagePropertyPixelHeight] as? Int ?? 0
+        let rotated = (properties?[kCGImagePropertyOrientation] as? Int ?? 1) >= 5
+        let largest = max(width, height)
+        guard let image = CGImageSourceCreateThumbnailAtIndex(source, 0, [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceShouldCacheImmediately: true,
+            kCGImageSourceThumbnailMaxPixelSize: max(min(largest, maxPixels ?? largest), 1),
+        ] as CFDictionary) else { return nil }
+        let full = rotated ? CGSize(width: height, height: width) : CGSize(width: width, height: height)
+        return (image, full.width > 0 ? full : CGSize(width: image.width, height: image.height))
     }
 
     /// Stored videos keep their still frame next to them (VideoFile).

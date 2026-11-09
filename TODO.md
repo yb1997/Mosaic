@@ -47,6 +47,18 @@ _All done for now._
 - [ ] **Video wallpaper follow-ups.** Not built yet: the Still frame submenu
   (the still is always about 1 s in), playing the video in its tile on hover,
   and hiding frame rates above the source's.
+- [ ] **Video on the lock screen: follow-ups.** Built (unreleased, see
+  `docs/LOCK_SCREEN_VIDEO.md`) and tested on the built-in screen: plays, loops,
+  survives unlock. Still to test: the LG and a different video per screen,
+  sleep and wake while locked, a new Space created after it's set, clearing
+  the lock video (the old screen saver should come back), changing the picture
+  of a screen without a video while another screen plays one, removing the
+  aerial override when the last video is cleared. When testing clearing, check `SystemDefault` and
+  `Spaces/*/Default` too: the agent copies the aerial there and Mosaic never
+  writes them, so they can name a deleted video (one already names
+  `60CA7644`), a possible route back to Golden Gate. Missing: frame rate and quality (the Video menu) for a lock
+  video; a progress bar for the lock copy's encode; a way to opt out of the
+  desktop video playing on the lock screen.
 - [ ] **Disconnected screens.** Saved entries for screens that aren't
   connected are invisible; list them in Settings so they can be cleared.
 

@@ -9,7 +9,10 @@ Writes a `com.apple.wallpaper.choice.image` choice into the `Idle` slot of
 `~/Library/Application Support/com.apple.wallpaper/Store/Index.plist`, then
 restarts WallpaperAgent.
 - WallpaperAgent keeps the change, but `Idle` is only the screen saver. The
-  lock screen still shows the `Desktop` wallpaper.
+  lock screen (locked with ⌃⌘Q) still shows the `Desktop` wallpaper.
+- Correction (2026-11-07): when the Mac locks after sitting idle, the screen
+  saver starts first and the lock screen shows `Idle`. Every run here used
+  ⌃⌘Q, so this didn't show up. See `docs/LOCK_SCREEN_VIDEO.md`.
 - Image choice format that WallpaperAgent accepts:
   `Configuration = bplist {type: imageFile, url: {relative: file://…}}`,
   `Files = [{relative: file://…}]`.
@@ -66,3 +69,24 @@ itself after `seconds` (default 20).
 - Not checked: Stage Manager and "click wallpaper to reveal desktop" (both off
   on this Mac), a screen-parameter change, lock and sleep. The lock screen is
   WallpaperAgent's picture, so it can't show a window.
+
+# Lock screen video spike (macOS 27.2, 2026-11-06, run twice: works)
+
+Run 1: a 1080p H.264 video played on the lock screen, then the player broke
+at unlock (`VideoSampleReadingErrors Code=4` while slowing to a stop), leaving
+the next lock black and the desktop gray. Run 2: the same clip re-encoded by
+`aerialenc.swift` (HEVC Main 10 with a half-rate base layer) played on two
+locks in a row and unlocked cleanly. `set` now writes every
+`Spaces/*/Displays/<id>` entry; Mosaic must be quit while testing. Details in
+`docs/LOCK_SCREEN_VIDEO.md`.
+
+## aerialspike.swift: register a video as a custom aerial
+The lock screen animates aerial wallpapers, so `add <video>` copies the video
+to `aerials/videos/<UUID>.mov` with a thumbnail, and adds a "Mosaic" asset to
+`aerials/manifest/entries.json`. If `AerialManifestLocalPathOverride` is set,
+as Native Aerials sets it on this Mac, it also adds the asset to that file.
+`set <assetID> [--display <uuid>]` makes it a screen's `Desktop` (or `Linked`)
+choice in `Index.plist`. Every write backs up to `~/backups/aerialspike-*`
+first; `restore <dir>` undoes it and moves the added files to the Trash. `show`
+is read-only. Background, references and the questions it should answer are in
+`docs/LOCK_SCREEN_VIDEO.md`.

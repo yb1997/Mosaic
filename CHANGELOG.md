@@ -11,6 +11,60 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- Video on the lock screen. A lock screen tile now takes a video too, and a
+  screen whose lock screen has nothing of its own (or is set to the same as
+  the desktop) plays its desktop video there. macOS only animates aerial
+  wallpapers on the lock screen, so Mosaic makes a lock copy of the video
+  (HEVC Main 10 with a half-rate base layer, which the lock screen needs to
+  pause cleanly at unlock), lists it as a "Mosaic" aerial and makes it that
+  screen's system wallpaper on every Space. It becomes that screen's screen
+  saver too, since a Mac that locks after sitting idle shows the screen saver
+  on the lock screen; the old screen saver comes back when the video stops.
+  While a screen plays a video, the other screens' screen savers show their
+  lock pictures, so an idle lock matches the menu on every screen. Mosaic also
+  points macOS at its own aerial list while it has lock videos, because macOS
+  otherwise can't find them and shows Golden Gate.
+  Mosaic's own window keeps showing
+  the desktop picture or video on top. WallpaperAgent restarts once (every
+  screen flashes) when a screen starts or stops playing a lock video, never
+  while locked. See docs/LOCK_SCREEN_VIDEO.md.
+
+### Changed
+- Swap Desktop and Lock Screen now works with videos.
+- The Settings window looks like System Settings: a sidebar with General,
+  Videos, Profiles and Updates (the desktop shows through it), and the chosen
+  pane beside it, with back and forward buttons (⌘[ and ⌘]). The window can
+  be resized and reopens on the last pane. Its sidebar icons follow the icon
+  style chosen in System Settings → Appearance: coloured, dark, clear glass
+  or tinted.
+
+### Fixed
+- The file picker for a wallpaper and the Settings window now come to the
+  front with keyboard focus instead of staying among the other app's windows.
+  Mosaic shows in the Dock while either is open.
+- A settings file that can't be read no longer costs any images: it's kept as
+  `<name>.unreadable` and nothing is cleaned up while it's there.
+- A video still converting no longer overwrites a profile switch, Undo, Swap
+  or Copy made in the meantime.
+- Updates are checked again at the next launch or wake after a failed check,
+  instead of a day later.
+- A full disk can no longer leave a video conversion stuck.
+- Picking an image or video for a slot now replaces whatever was still being
+  copied or converted for it, and a copy that finishes after a profile switch
+  no longer overwrites that profile. Two picks for one slot can't finish out
+  of order, and the Undo note says "video" when a video was replaced.
+- If macOS's wallpaper settings can't be written, the screen saver choices
+  saved for putting back after a lock video are no longer lost.
+- Cancelling a video conversion also stops reading the file, and a lock
+  screen video that no screen wants any more stops encoding.
+
+### Performance
+- Switching Spaces no longer reads macOS's wallpaper settings when no screen
+  has a lock video, and restarting WallpaperAgent no longer launches `pgrep`.
+- A picture drawn under a lock video is decoded at screen size, not full size
+  (about 80 MB less per 6K screen).
+
 ## [1.5.0] - 2026-11-06
 
 ### Added

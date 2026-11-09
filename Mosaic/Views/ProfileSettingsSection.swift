@@ -17,7 +17,7 @@ struct ProfileSettingsSection: View {
                 }
             }
         } header: {
-            Text("Profiles")
+            Text("Saved Profiles")
         } footer: {
             Text("A profile keeps each screen’s desktop and lock screen images, including screens that aren’t connected.")
         }

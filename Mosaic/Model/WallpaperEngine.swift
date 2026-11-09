@@ -2,8 +2,10 @@ import AppKit
 
 /// Puts the right image on each screen. macOS shows the desktop wallpaper on
 /// the lock screen, so a separate lock image is done by swapping the desktop
-/// while the screen is locked (see Spikes/README.md). Everything is driven by
-/// notifications; nothing polls.
+/// while the screen is locked (see Spikes/README.md). A lock screen video
+/// instead becomes the screen's system wallpaper for good, as a custom aerial,
+/// with Mosaic's window showing the desktop on top (LockScreenVideos).
+/// Everything is driven by notifications; nothing polls.
 @MainActor
 final class WallpaperEngine {
     private let store: WallpaperStore
@@ -21,6 +23,7 @@ final class WallpaperEngine {
     private let fade = WallpaperFade()
     private var fadeTask: Task<Void, Never>?
     private let videos = VideoWallpapers()
+    private let lockVideos: LockScreenVideos
     private var isAsleep = false
 
     /// A still of the macOS default wallpaper (the default itself is an
@@ -34,6 +37,7 @@ final class WallpaperEngine {
 
     init(store: WallpaperStore) {
         self.store = store
+        lockVideos = LockScreenVideos(imagesDirectory: store.imagesDirectory)
         #if DEBUG
         // `-keepWallpapers YES` never touches the real wallpapers, e.g. for screenshots with sample images.
         if UserDefaults.standard.bool(forKey: "keepWallpapers") { return }
@@ -42,6 +46,9 @@ final class WallpaperEngine {
         store.onChange = { [weak self] in self?.applyChange() }
         store.onDesktopCleared = { [weak self] in self?.clearedDisplays.insert($0) }
         store.onPlaybackChange = { [weak self] in self?.updatePlayback() }
+        lockVideos.onChange = { [weak self] in self?.apply() }
+        lockVideos.onFailure = { [weak store] in store?.reportError($0) }
+        lockVideos.onFailedChange = { [weak store] in store?.failedLockVideos = $0 }
 
         let distributed = DistributedNotificationCenter.default()
         observe(distributed, "com.apple.screenIsLocked") { $0.setLocked(true) }
@@ -53,7 +60,12 @@ final class WallpaperEngine {
         // picture when it slides in, so fade that too instead of snapping;
         // Spaces that are already up to date have nothing to change.
         observe(workspace, NSWorkspace.activeSpaceDidChangeNotification.rawValue) { $0.applyChange() }
-        observe(workspace, NSWorkspace.didWakeNotification.rawValue) { $0.setAsleep(false); $0.apply() }
+        observe(workspace, NSWorkspace.didWakeNotification.rawValue) { engine in
+            engine.setAsleep(false)
+            // Something may have changed macOS's settings or aerials meanwhile.
+            engine.lockVideos.readActive()
+            engine.apply()
+        }
         // Videos pause while the Mac or its screens sleep, in Low Power Mode,
         // and on battery when Settings asks for that.
         observe(workspace, NSWorkspace.willSleepNotification.rawValue) { $0.setAsleep(true) }
@@ -109,7 +121,7 @@ final class WallpaperEngine {
         if locked {
             let coversForeignWallpaper = store.displays.contains {
                 let wallpapers = store.wallpapers(for: $0)
-                return wallpapers.effectiveLock != nil && wallpapers.desktop == nil
+                return wallpapers.effectiveLock != nil && wallpapers.desktop == nil && !lockVideos.isActive(on: $0.id)
             }
             if coversForeignWallpaper {
                 settingsBeforeLock = SystemWallpaperStore.snapshot()
@@ -137,6 +149,27 @@ final class WallpaperEngine {
         cancelFade()
         pendingChanges().forEach(set)
         showVideos(fade: false)
+        updateLockVideos()
+    }
+
+    /// Starts or stops lock screen videos to match the choices. Never while
+    /// locked: that restarts WallpaperAgent, which would race the lock.
+    private func updateLockVideos() {
+        guard !isLocked else { return }
+        var wanted: [String: LockScreenVideos.Wanted] = [:]
+        for display in store.displays {
+            let wallpapers = store.wallpapers(for: display)
+            guard let file = wallpapers.lockVideo else { continue }
+            let scaling = wallpapers.effectiveLockScaling
+            wanted[display.id] = .init(assetID: AerialCatalog.assetID(for: file, scaling: scaling), file: file, scaling: scaling)
+        }
+        lockVideos.update(wanted: wanted, connected: Set(store.displays.map(\.id)), picture: { [store, clearedDisplays] id in
+            // A screen that's only empty gets back whatever it had before.
+            store.pictureURL(store.screens[id]?.desktop) ?? (clearedDisplays.contains(id) ? Self.defaultWallpaper : nil)
+        }, fallbackPicture: Self.defaultWallpaper, lockPicture: { [store] id in
+            let wallpapers = store.screens[id]
+            return store.pictureURL(wallpapers?.effectiveLock ?? wallpapers?.desktop)
+        })
     }
 
     /// Puts each screen's desktop video in its window, or takes it down.
@@ -148,11 +181,21 @@ final class WallpaperEngine {
         }
     }
 
-    /// Each connected screen's desktop video, or nil where its desktop isn't one.
+    /// Each connected screen's desktop video, or nil where its desktop isn't
+    /// one. A screen playing a lock screen video gets its desktop picture in
+    /// the window too, as its system wallpaper is the video's aerial. With no
+    /// desktop of its own it shows the default if it was cleared, or the
+    /// picture it had before. A Photos picture or aerial can't be drawn, so
+    /// then the aerial's still frame stays until the video stops.
     private func desiredVideos() -> [(Display, URL?, Scaling)] {
         store.displays.map { display in
             let wallpapers = store.wallpapers(for: display)
-            let video = VideoFile.isVideo(wallpapers.desktop) ? store.imageURL(wallpapers.desktop) : nil
+            let isActive = lockVideos.isActive(on: display.id)
+            if wallpapers.desktop == nil, isActive {
+                let cover = clearedDisplays.contains(display.id) ? Self.defaultWallpaper : lockVideos.savedPicture(on: display.id)
+                return (display, cover, .fill)
+            }
+            let video = VideoFile.isVideo(wallpapers.desktop) || isActive ? store.imageURL(wallpapers.desktop) : nil
             return (display, video, wallpapers.desktopScaling)
         }
     }
@@ -171,6 +214,8 @@ final class WallpaperEngine {
     }
 
     private func applyWithFade() async {
+        // A change to the lock screen alone changes nothing on the desktop.
+        updateLockVideos()
         let changes = pendingChanges()
         let videoChanges = desiredVideos().contains { videos.needsChange(on: $0.0, video: $0.1, scaling: $0.2) }
         guard !changes.isEmpty || videoChanges else { return }
@@ -201,6 +246,10 @@ final class WallpaperEngine {
             let wallpapers = store.wallpapers(for: display)
             let screen = display.screen
             if wallpapers.desktop != nil { clearedDisplays.remove(display.id) }
+            // Its system wallpaper is a lock screen video; setting a picture
+            // would replace it (on this Space), and NSWorkspace can't read
+            // an aerial back to compare.
+            if lockVideos.isActive(on: display.id) { return nil }
             // A video's still frame is the real wallpaper under its window.
             let desktop = store.pictureURL(wallpapers.desktop)
                 ?? (clearedDisplays.contains(display.id) ? Self.defaultWallpaper : nil)

@@ -241,29 +241,52 @@ struct VideoStoreTests {
         #expect(sandbox.imageFiles.isEmpty)
     }
 
-    @Test func lockScreenRefusesVideos() async throws {
+    @Test func lockScreenTakesAVideo() async throws {
         let sandbox = Sandbox()
         let display = testDisplay()
         let store = sandbox.store(displays: [display])
+        store.setLockSameAsDesktop(true, display: display)
         let source = sandbox.folder.appendingPathComponent("clip.mov")
         try await makeTestVideo(at: source, seconds: 1)
 
         store.setMedia(from: source, slot: .lock, display: display)
-        #expect(store.lastError == "The lock screen can only show images.")
-        #expect(!store.isImporting(.lock, display: display))
-        #expect(store.wallpapers(for: display).lock == nil)
+        #expect(store.videoProgress(.lock, display: display) != nil)
+        try await waitForImports(store, display)
+        #expect(store.lastError == nil)
+        let entry = store.wallpapers(for: display)
+        let name = try #require(entry.lock)
+        let file = try #require(VideoFile(fileName: name))
+        // Choosing a lock video turns "same as desktop" off, so it shows.
+        #expect(!entry.lockSameAsDesktop)
+        #expect(entry.lockVideo == file)
+        #expect(entry.desktop == nil)
     }
 
-    @Test func swapNeverPutsAVideoOnTheLockScreen() throws {
+    @Test func lockScreenPlaysTheDesktopVideoWhenItHasNothingOfItsOwn() {
+        let video = VideoFile(sourceHash: String(repeating: "c", count: 64), format: .standard)
+        var entry = ScreenWallpapers()
+        entry.desktop = video.fileName
+        #expect(entry.lockVideo == video)
+        entry.lock = "b.png"
+        #expect(entry.lockVideo == nil)
+        entry.lockSameAsDesktop = true
+        #expect(entry.lockVideo == video)
+    }
+
+    @Test func swapMovesAVideoToTheLockScreen() throws {
         let sandbox = Sandbox()
         let video = VideoFile(sourceHash: String(repeating: "c", count: 64), format: .standard)
-        for name in [video.fileName, video.stillName, "b.png"] { try sandbox.addImage(name) }
+        for name in [video.fileName, video.stillName, video.aerialName, "b.png"] { try sandbox.addImage(name) }
         try sandbox.writeState(#"{"TEST-DISPLAY": {"desktop": "\#(video.fileName)", "lock": "b.png"}}"#)
         let display = testDisplay()
         let store = sandbox.store(displays: [display])
-        #expect(!store.canSwap(on: display))
-        // The still frame isn't cleaned up while its video is used.
+        #expect(store.canSwap(on: display))
+        // The still frame and lock copy aren't cleaned up while their video is used.
         #expect(sandbox.imageFiles.contains(video.stillName))
+        #expect(sandbox.imageFiles.contains(video.aerialName))
+        store.swapDesktopAndLock(on: display)
+        #expect(store.wallpapers(for: display).lock == video.fileName)
+        #expect(store.wallpapers(for: display).lockVideo == video)
     }
 
     @Test func lowerSettingsWorkWithoutTheOriginal() async throws {
@@ -296,6 +319,23 @@ struct VideoStoreTests {
         let restored = try #require(store.wallpapers(for: display).desktop)
         #expect(VideoFile(fileName: restored)?.format == .standard)
         #expect(sandbox.imageFiles.contains(restored))
+    }
+
+    @Test func applyingAProfileStopsAConversion() async throws {
+        let sandbox = Sandbox()
+        try sandbox.addImage("a.png")
+        try sandbox.writeState(#"{"TEST-DISPLAY": {"desktop": "a.png"}}"#)
+        let display = testDisplay()
+        let store = sandbox.store(displays: [display])
+        store.saveProfile(named: "Saved")
+        let source = sandbox.folder.appendingPathComponent("clip.mov")
+        try await makeTestVideo(at: source, seconds: 4)
+
+        store.setMedia(from: source, slot: .desktop, display: display)
+        store.apply(try #require(store.profiles.first))
+        try await waitForImports(store, display)
+        #expect(store.wallpapers(for: display).desktop == "a.png")
+        #expect(sandbox.imageFiles == ["a.png"])
     }
 
     @Test func cancellingKeepsTheOldWallpaper() async throws {

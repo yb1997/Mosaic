@@ -30,7 +30,10 @@ struct MosaicApp: App {
         engine = WallpaperEngine(store: store)
         #endif
         UpdateService.shared.startAutomaticChecks()
-        DispatchQueue.main.async { StatusItemDropTarget.start(store: store) }
+        DispatchQueue.main.async {
+            StatusItemDropTarget.start(store: store)
+            MenuPanelAnchor.start()
+        }
     }
 
     var body: some Scene {
@@ -45,7 +48,8 @@ struct MosaicApp: App {
                 .environment(loginItem)
                 .environment(store)
         }
-        .windowResizability(.contentSize)
+        .windowResizability(.contentMinSize)
+        .defaultSize(width: 715, height: 500)
         .defaultLaunchBehavior(.suppressed)
     }
 }

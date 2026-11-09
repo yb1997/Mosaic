@@ -127,6 +127,9 @@ struct VideoFile: Hashable, Sendable {
     var fileName: String { "\(stem).mov" }
     var stillName: String { "\(stem).heic" }
     var originalName: String { "\(sourceHash).original" }
+    /// The lock screen's copy: HEVC with a half-rate base layer, which the
+    /// aerial player needs (VideoEncoder.encodeAerial). Not itself a VideoFile name.
+    var aerialName: String { "\(stem)-aerial.mov" }
 
     private var stem: String { "\(sourceHash)-\(format.frameRate.rawValue)-\(format.quality.rawValue)" }
 

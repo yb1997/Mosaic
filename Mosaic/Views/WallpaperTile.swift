@@ -3,7 +3,7 @@ import UniformTypeIdentifiers
 
 /// One image slot of one screen. Click (or hover and click "Choose…") to pick
 /// an image in a Finder panel, or drop an image on it; the × in the corner clears it.
-/// A desktop slot also takes a video (docs/VIDEO_WALLPAPERS.md).
+/// Either slot also takes a video (docs/VIDEO_WALLPAPERS.md, docs/LOCK_SCREEN_VIDEO.md).
 struct WallpaperTile: View {
     @Environment(WallpaperStore.self) private var store
     let display: Display
@@ -148,7 +148,7 @@ struct WallpaperTile: View {
         let hasImage = fileName != nil && !isImporting
         let isVideo = VideoFile.isVideo(fileName)
 
-        Button(slot == .desktop ? "Choose Image or Video…" : "Choose Image…", systemImage: "photo.badge.plus", action: choose)
+        Button("Choose Image or Video…", systemImage: "photo.badge.plus", action: choose)
             .disabled(isLinked || isImporting)
 
         if !others.isEmpty {
@@ -206,12 +206,12 @@ struct WallpaperTile: View {
                     // Original quality keeps every frame, so another rate needs re-encoding at the default quality.
                     let wanted = VideoFormat(frameRate: rate,
                                              quality: format.quality == .original && rate != .original ? standard.quality : format.quality)
-                    formatToggle(rate.title, isOn: format.frameRate == rate, wanted: wanted, isImporting: isImporting)
+                    formatToggle(rate.title, isOn: format.frameRate == rate, current: format, wanted: wanted, isImporting: isImporting)
                 }
             }
             Section("Quality") {
                 ForEach(VideoQuality.allCases, id: \.self) { quality in
-                    formatToggle(quality.title, isOn: format.quality == quality,
+                    formatToggle(quality.title, isOn: format.quality == quality, current: format,
                                  wanted: VideoFormat(frameRate: format.frameRate, quality: quality), isImporting: isImporting)
                 }
             }
@@ -225,12 +225,13 @@ struct WallpaperTile: View {
         }
     }
 
-    private func formatToggle(_ title: String, isOn: Bool, wanted: VideoFormat, isImporting: Bool) -> some View {
+    private func formatToggle(_ title: String, isOn: Bool, current: VideoFormat, wanted: VideoFormat, isImporting: Bool) -> some View {
         Toggle(title, isOn: Binding(
             get: { isOn },
             set: { _ in store.setVideoFormat(wanted, display: display) }
         ))
-        .disabled(isImporting || (!isOn && !store.canUse(wanted, on: display)))
+        // Off, yet asking for what's stored: Original quality forces Original frames.
+        .disabled(isImporting || (!isOn && (wanted == current || !store.canUse(wanted, on: display))))
     }
 
     /// "45 MB · 4608×2592" for the stored video.
@@ -256,21 +257,23 @@ struct WallpaperTile: View {
 
     private func choose() {
         let panel = NSOpenPanel()
-        panel.allowedContentTypes = slot == .desktop ? [.image, .movie] : [.image]
+        panel.allowedContentTypes = [.image, .movie]
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
-        panel.message = slot == .desktop
-            ? "Choose the desktop image or video for \(display.name)"
-            : "Choose the \(slot.title.lowercased()) image for \(display.name)"
+        panel.message = "Choose the \(slot.title.lowercased()) image or video for \(display.name)"
         // Close the menu panel first: it floats above other windows and would cover the open panel.
         dismiss()
-        NSApp.activate()
         let store = store, display = display, slot = slot
-        panel.begin { response in
-            guard response == .OK, let url = panel.url else { return }
-            MainActor.assumeIsolated {
-                store.setMedia(from: url, slot: slot, display: display)
+        Task { @MainActor in
+            AppActivation.begin()
+            panel.begin { response in
+                MainActor.assumeIsolated {
+                    AppActivation.endIfIdle(closing: panel)
+                    guard response == .OK, let url = panel.url else { return }
+                    store.setMedia(from: url, slot: slot, display: display)
+                }
             }
+            await AppActivation.keepInFront { panel }
         }
     }
 
@@ -288,7 +291,7 @@ struct WallpaperTile: View {
                         store.setMedia(from: url, slot: slot, display: display)
                     } else {
                         store.importFailed(url.lastPathComponent, CocoaError(.fileReadCorruptFile, userInfo: [
-                            NSLocalizedDescriptionKey: slot == .desktop ? "It isn’t an image or a video." : "It isn’t an image.",
+                            NSLocalizedDescriptionKey: "It isn’t an image or a video.",
                         ]))
                     }
                 }
@@ -324,10 +327,6 @@ struct WallpaperTile: View {
     /// copy is temporary too, so no link to it is kept.
     private func acceptVideo(_ provider: NSItemProvider, type: UTType) -> Bool {
         let store = store, slot = slot, displayID = display.id
-        guard slot == .desktop else {
-            store.importFailed(provider.suggestedName ?? "The video", VideoEncoder.Failure(message: "The lock screen can only show images."))
-            return true
-        }
         let droppedName = provider.suggestedName ?? "The dropped video"
         let copy = FileManager.default.temporaryDirectory
             .appendingPathComponent("Mosaic-\(UUID().uuidString).\(type.preferredFilenameExtension ?? "mov")")

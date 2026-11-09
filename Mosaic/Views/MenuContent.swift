@@ -83,7 +83,8 @@ struct MenuContent: View {
                     Button {
                         dismiss()
                         openWindow(id: "settings")
-                        NSApp.activate()
+                        AppActivation.begin()
+                        Task { await AppActivation.keepInFront { AppActivation.settingsWindow } }
                     } label: {
                         Label("Settings…", systemImage: "gearshape")
                             .labelStyle(.iconOnly)
@@ -158,9 +159,8 @@ struct DisplaySection: View {
                         .frame(width: 136, height: 85)
                 }
             }
-            if showsLockToggle, VideoFile.isVideo(store.wallpapers(for: display).desktop),
-               store.wallpapers(for: display).effectiveLock == nil {
-                Text("Lock screen shows a still from the video.")
+            if showsLockToggle, store.wallpapers(for: display).lockVideo != nil {
+                Text(store.lockVideoFailed(on: display) ? "The lock screen video couldn’t be made." : "Lock screen plays the video.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
